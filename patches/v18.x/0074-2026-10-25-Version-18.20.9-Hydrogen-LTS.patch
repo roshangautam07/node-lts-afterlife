@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Roshan Gautam <roshangautam07@gmail.com>
-Date: Sun, 25 Oct 2026 22:03:14 +0545
+Date: Sun, 25 Oct 2026 22:28:03 +0545
 Subject: [PATCH 74/74] 2026-10-25, Version 18.20.9 'Hydrogen' (LTS)
 
 Unofficial security release for Node.js 18 after its upstream
@@ -89,7 +89,7 @@ index 9a58c834de..fa5070d864 100644
      description: The `state.weight` property is now always set to 16 and
                   `sumDependencyWeight` is always set to 0.
 diff --git a/doc/changelogs/CHANGELOG_V18.md b/doc/changelogs/CHANGELOG_V18.md
-index 87735a65b4..63c4473e9f 100644
+index 87735a65b4..5773a40110 100644
 --- a/doc/changelogs/CHANGELOG_V18.md
 +++ b/doc/changelogs/CHANGELOG_V18.md
 @@ -9,6 +9,7 @@
@@ -106,7 +106,7 @@ index 87735a65b4..63c4473e9f 100644
  
 +<a id="18.20.9"></a>
 +
-+## 2026-10-25, Version 18.20.9 'Hydrogen' (LTS), @nodejs-eol-support
++## 2026-10-25, Version 18.20.9 'Hydrogen' (LTS), @roshangautam07
 +
 +This is an unofficial security release made after the upstream end-of-life
 +of Node.js 18. It contains backports of the fixes from the Node.js

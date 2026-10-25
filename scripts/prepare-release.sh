@@ -14,6 +14,8 @@ line=${1:?usage: prepare-release.sh <line> <version> [date]}
 version=${2:?missing version}
 version=${version#v}
 date=${3:-$(date +%Y-%m-%d)}
+# GitHub handle credited in the changelog title, as upstream does.
+RELEASER=${RELEASER:-roshangautam07}
 dir=$(work_dir "$line")
 
 cd "$dir"
@@ -24,9 +26,9 @@ fi
 # Changelog covers everything since the previous release on this branch.
 prev=$(git describe --tags --abbrev=0 --match "v${version%%.*}.*" 2>/dev/null || base_tag "$line")
 
-python3 - "$version" "$date" "$prev" <<'EOF'
+python3 - "$version" "$date" "$prev" "$RELEASER" <<'EOF'
 import re, subprocess, sys
-version, date, prev = sys.argv[1:4]
+version, date, prev, releaser = sys.argv[1:5]
 major, minor, patch = version.split('.')
 
 def read(p): return open(p, encoding='utf-8').read()
@@ -67,7 +69,7 @@ cl_path = f'doc/changelogs/CHANGELOG_V{major}.md'
 cl = read(cl_path)
 entry = f'''<a id="{version}"></a>
 
-## {date}, Version {version} '{codename}' (LTS), @nodejs-eol-support
+## {date}, Version {version} '{codename}' (LTS), @{releaser}
 
 This is an unofficial security release made after the upstream end-of-life
 of Node.js {major}. It contains backports of the fixes from the Node.js

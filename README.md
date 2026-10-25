@@ -1,7 +1,7 @@
-# Node.js EOL Support
+# node-lts-afterlife
 
-Unofficial, community security patches for Node.js release lines that have
-reached end-of-life upstream.
+Unofficial, community security patches for Node.js LTS release lines that
+have reached end-of-life upstream.
 
 | Line | Upstream EOL | Last upstream release | This project's branch |
 |------|--------------|-----------------------|-----------------------|
@@ -33,7 +33,8 @@ commit), or why it does not apply.
 | v20.20.3 | v20.20.2 | linux-x64, linux-arm64 (glibc ≥ 2.31), darwin-arm64 |
 | v18.20.9 | v18.20.8 | linux-x64, linux-arm64 (glibc ≥ 2.31), darwin-arm64 |
 
-Download the tarballs and `SHASUMS256.txt` from the GitHub releases page.
+Download the tarballs and `SHASUMS256.txt` from the
+[releases page](https://github.com/roshangautam07/node-lts-afterlife/releases).
 To install with nvm:
 
 ```sh
@@ -68,7 +69,7 @@ Everything here can be checked independently:
 4. **The binaries were built from this repository.** Releases built by
    the [`Build release`](.github/workflows/release.yml) workflow carry
    signed build provenance. Check a download with
-   `gh attestation verify node-v20.20.3-linux-x64.tar.xz --repo <owner>/<repo>`.
+   `gh attestation verify node-v20.20.3-linux-x64.tar.xz --repo roshangautam07/node-lts-afterlife`.
    The first releases (v18.20.9, v20.20.3) were built outside CI and only
    have `SHASUMS256.txt`, but they can be rebuilt from the same patches with
    the workflow.
