@@ -1,0 +1,75 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Thu, 26 Mar 2026 23:18:32 +0100
+Subject: [PATCH 52/60] zlib: fix use-after-free when reset() is called during
+ write
+
+The Reset() method did not check the write_in_progress_ flag before
+resetting the compression stream. This allowed reset() to free the
+compression library's internal state while a worker thread was still
+using it during an async write, causing a use-after-free.
+
+Add a write_in_progress_ guard to Reset() that throws an error if a
+write is in progress, matching the existing pattern used by Close()
+and Write().
+
+PR-URL: TODO
+Refs: https://hackerone.com/reports/3609132
+PR-URL: https://github.com/nodejs/node/pull/62325
+Reviewed-By: Anna Henningsen <anna@addaleax.net>
+Reviewed-By: James M Snell <jasnell@gmail.com>
+Reviewed-By: Yagiz Nizipli <yagiz@nizipli.com>
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+(cherry picked from commit ad8f518a810d88d8c2a20cdb432e06559777dfa8)
+---
+ src/node_zlib.cc                              |  6 +++++
+ test/parallel/test-zlib-reset-during-write.js | 23 +++++++++++++++++++
+ 2 files changed, 29 insertions(+)
+ create mode 100644 test/parallel/test-zlib-reset-during-write.js
+
+diff --git a/src/node_zlib.cc b/src/node_zlib.cc
+index dbed559f94..0ed55acba2 100644
+--- a/src/node_zlib.cc
++++ b/src/node_zlib.cc
+@@ -462,6 +462,12 @@ class CompressionStream : public AsyncWrap, public ThreadPoolWork {
+     CompressionStream* wrap;
+     ASSIGN_OR_RETURN_UNWRAP(&wrap, args.This());
+ 
++    if (wrap->write_in_progress_) {
++      wrap->env()->ThrowError(
++          "Cannot reset zlib stream while a write is in progress");
++      return;
++    }
++
+     AllocScope alloc_scope(wrap);
+     const CompressionError err = wrap->context()->ResetStream();
+     if (err.IsError())
+diff --git a/test/parallel/test-zlib-reset-during-write.js b/test/parallel/test-zlib-reset-during-write.js
+new file mode 100644
+index 0000000000..35c4c853e5
+--- /dev/null
++++ b/test/parallel/test-zlib-reset-during-write.js
+@@ -0,0 +1,23 @@
++'use strict';
++const common = require('../common');
++const assert = require('assert');
++const { createBrotliCompress, createDeflate } = require('zlib');
++
++// Tests that calling .reset() while an async write is in progress
++// throws an error instead of causing a use-after-free.
++
++for (const factory of [createBrotliCompress, createDeflate]) {
++  const stream = factory();
++  const input = Buffer.alloc(1024, 0x41);
++
++  stream.write(input, common.mustCall());
++  stream.on('error', common.mustNotCall());
++
++  // The write has been dispatched to the thread pool.
++  // Calling reset while write is in progress must throw.
++  assert.throws(() => {
++    stream._handle.reset();
++  }, {
++    message: 'Cannot reset zlib stream while a write is in progress',
++  });
++}

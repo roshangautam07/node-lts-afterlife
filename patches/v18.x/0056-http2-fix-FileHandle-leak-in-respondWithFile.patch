@@ -1,0 +1,98 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: sangwook <rewq5991@gmail.com>
+Date: Mon, 9 Feb 2026 08:46:52 +0900
+Subject: [PATCH 56/74] http2: fix FileHandle leak in respondWithFile
+
+Ensure that the file handle is closed if header validation fails in
+respondWithFile. This prevents ERR_INVALID_STATE errors where a
+FileHandle object is closed during garbage collection.
+
+PR-URL: https://github.com/nodejs/node/pull/61707
+Reviewed-By: Matteo Collina <matteo.collina@gmail.com>
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+(cherry picked from commit 2fdb5ce6cc268329c4c142e3cf942c7a3a605cbf)
+---
+ lib/internal/http2/core.js                    |  4 ++
+ .../test-http2-respond-file-fd-leak.js        | 51 +++++++++++++++++++
+ 2 files changed, 55 insertions(+)
+ create mode 100644 test/parallel/test-http2-respond-file-fd-leak.js
+
+diff --git a/lib/internal/http2/core.js b/lib/internal/http2/core.js
+index b1b6baa37d..71ac9d7731 100644
+--- a/lib/internal/http2/core.js
++++ b/lib/internal/http2/core.js
+@@ -2480,6 +2480,8 @@ function processRespondWithFD(self, fd, headers, offset = 0, length = -1,
+   try {
+     headersList = mapToHeaders(headers, assertValidPseudoHeaderResponse);
+   } catch (err) {
++    if (self.ownsFd)
++      tryClose(fd);
+     self.destroy(err);
+     return;
+   }
+@@ -2493,6 +2495,8 @@ function processRespondWithFD(self, fd, headers, offset = 0, length = -1,
+   const ret = self[kHandle].respond(headersList, streamOptions);
+ 
+   if (ret < 0) {
++    if (self.ownsFd)
++      tryClose(fd);
+     self.destroy(new NghttpError(ret));
+     return;
+   }
+diff --git a/test/parallel/test-http2-respond-file-fd-leak.js b/test/parallel/test-http2-respond-file-fd-leak.js
+new file mode 100644
+index 0000000000..45e1218500
+--- /dev/null
++++ b/test/parallel/test-http2-respond-file-fd-leak.js
+@@ -0,0 +1,51 @@
++'use strict';
++const common = require('../common');
++if (!common.hasCrypto)
++  common.skip('missing crypto');
++const fixtures = require('../common/fixtures');
++const assert = require('assert');
++const http2 = require('http2');
++const fs = require('fs');
++
++const fname = fixtures.path('elipses.txt');
++
++const server = http2.createServer();
++
++server.on('stream', common.mustCall((stream) => {
++  const originalClose = fs.close;
++  let fdClosed = false;
++
++  fs.close = common.mustCall(function(fd, cb) {
++    fdClosed = true;
++    return originalClose.apply(this, arguments);
++  });
++
++  const headers = {
++    ':method': 'GET',
++    'content-type': 'text/plain'
++  };
++
++  stream.respondWithFile(fname, headers);
++
++  stream.on('error', common.mustCall((err) => {
++    assert.strictEqual(err.code, 'ERR_HTTP2_INVALID_PSEUDOHEADER');
++  }));
++
++  stream.on('close', common.mustCall(() => {
++    fs.close = originalClose;
++    assert.strictEqual(fdClosed, true);
++  }));
++}));
++
++server.listen(0, common.mustCall(() => {
++  const client = http2.connect(`http://localhost:${server.address().port}`);
++  const req = client.request();
++
++  req.on('close', common.mustCall(() => {
++    client.close();
++    server.close();
++  }));
++
++  req.on('error', common.mustCall());
++  req.end();
++}));

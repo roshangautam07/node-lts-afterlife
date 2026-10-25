@@ -1,0 +1,3831 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: "Node.js GitHub Bot" <github-bot@iojs.org>
+Date: Tue, 20 Oct 2026 13:07:12 -0400
+Subject: [PATCH 39/60] deps: update c-ares to 1.34.9
+
+PR-URL: https://github.com/nodejs/node/pull/66868
+Reviewed-By: Colin Ihrig <cjihrig@gmail.com>
+Reviewed-By: Richard Lau <richard.lau@ibm.com>
+(cherry picked from commit a538a9515d679eaa0835b128b7fd3ec569fd4668)
+---
+ deps/cares/CMakeLists.txt                     |  16 +-
+ deps/cares/RELEASE-NOTES.md                   | 101 ++++++
+ deps/cares/aminclude_static.am                |   2 +-
+ deps/cares/configure                          | 117 ++++++-
+ deps/cares/configure.ac                       |  15 +-
+ deps/cares/docs/ares_cancel.3                 |  17 +
+ deps/cares/docs/ares_destroy.3                |   7 +
+ deps/cares/docs/ares_dns_record.3             |   3 +
+ deps/cares/docs/ares_inet_pton.3              |  18 +-
+ deps/cares/docs/ares_init_options.3           |  26 +-
+ deps/cares/docs/ares_set_pending_write_cb.3   |   5 +-
+ .../docs/ares_set_server_state_callback.3     |  31 +-
+ deps/cares/docs/ares_set_servers_csv.3        |  17 +
+ deps/cares/docs/ares_set_socket_callback.3    |   4 +
+ .../docs/ares_set_socket_configure_callback.3 |   4 +
+ deps/cares/docs/ares_set_socket_functions.3   |  32 ++
+ deps/cares/include/ares_version.h             |   4 +-
+ deps/cares/src/lib/Makefile.in                |   2 +-
+ deps/cares/src/lib/ares_addrinfo_localhost.c  |   2 +-
+ deps/cares/src/lib/ares_cancel.c              |  25 +-
+ deps/cares/src/lib/ares_close_sockets.c       |  89 ++++-
+ deps/cares/src/lib/ares_conn.c                | 266 +++++++++++++-
+ deps/cares/src/lib/ares_conn.h                |  37 +-
+ deps/cares/src/lib/ares_destroy.c             |  85 ++++-
+ deps/cares/src/lib/ares_getaddrinfo.c         |   5 +
+ deps/cares/src/lib/ares_gethostbyaddr.c       |   5 +
+ deps/cares/src/lib/ares_getnameinfo.c         |  12 +-
+ deps/cares/src/lib/ares_inet_net_pton.h       |  28 ++
+ deps/cares/src/lib/ares_init.c                |  36 +-
+ deps/cares/src/lib/ares_library_init.c        |  11 +-
+ deps/cares/src/lib/ares_options.c             |  48 ++-
+ deps/cares/src/lib/ares_parse_into_addrinfo.c |   2 +-
+ deps/cares/src/lib/ares_private.h             | 164 ++++++++-
+ deps/cares/src/lib/ares_process.c             | 325 ++++++++++++++++--
+ deps/cares/src/lib/ares_qcache.c              | 212 ++++++++++--
+ deps/cares/src/lib/ares_query.c               |   5 +
+ deps/cares/src/lib/ares_search.c              |  10 +
+ deps/cares/src/lib/ares_send.c                |  91 ++++-
+ deps/cares/src/lib/ares_socket.c              |  26 ++
+ deps/cares/src/lib/ares_socket.h              |  23 ++
+ deps/cares/src/lib/ares_sysconfig_files.c     |  18 +-
+ deps/cares/src/lib/ares_update_servers.c      |  44 ++-
+ deps/cares/src/lib/dsa/ares_htable.c          |   6 +-
+ deps/cares/src/lib/event/ares_event_select.c  |  15 +-
+ deps/cares/src/lib/inet_net_pton.c            |  65 ++--
+ .../cares/src/lib/legacy/ares_parse_a_reply.c |   7 +-
+ .../src/lib/legacy/ares_parse_aaaa_reply.c    |   7 +-
+ .../src/lib/legacy/ares_parse_uri_reply.c     |   2 +-
+ deps/cares/src/lib/record/ares_dns_mapping.c  |  15 +
+ deps/cares/src/lib/record/ares_dns_name.c     |   2 +-
+ deps/cares/src/lib/record/ares_dns_parse.c    |   7 +-
+ deps/cares/src/lib/record/ares_dns_private.h  |   4 +
+ deps/cares/src/lib/record/ares_dns_write.c    |  18 +-
+ deps/cares/src/lib/str/ares_buf.c             |   5 +
+ deps/cares/src/lib/util/ares_math.c           |   6 +
+ deps/cares/src/lib/util/ares_math.h           |  12 +
+ deps/cares/src/lib/util/ares_uri.c            |   5 +
+ 57 files changed, 1939 insertions(+), 227 deletions(-)
+
+diff --git a/deps/cares/CMakeLists.txt b/deps/cares/CMakeLists.txt
+index a9ae8fb952..01e68ef76c 100644
+--- a/deps/cares/CMakeLists.txt
++++ b/deps/cares/CMakeLists.txt
+@@ -12,7 +12,7 @@ INCLUDE (CheckCSourceCompiles)
+ INCLUDE (CheckStructHasMember)
+ INCLUDE (CheckLibraryExists)
+ 
+-PROJECT (c-ares LANGUAGES C VERSION "1.34.8" )
++PROJECT (c-ares LANGUAGES C VERSION "1.34.9" )
+ 
+ # Set this version before release
+ SET (CARES_VERSION "${PROJECT_VERSION}")
+@@ -30,7 +30,7 @@ INCLUDE (GNUInstallDirs) # include this *AFTER* PROJECT(), otherwise paths are w
+ # For example, a version of 4:0:2 would generate output such as:
+ #    libname.so   -> libname.so.2
+ #    libname.so.2 -> libname.so.2.2.0
+-SET (CARES_LIB_VERSIONINFO "21:7:19")
++SET (CARES_LIB_VERSIONINFO "21:8:19")
+ 
+ 
+ OPTION (CARES_STATIC        "Build as a static library"                                             OFF)
+@@ -328,10 +328,21 @@ ENDIF ()
+ SET (ORIG_CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEEFINITIONS})
+ SET (ORIG_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+ SET (ORIG_CMAKE_EXTRA_INCLUDE_FILES ${CMAKE_EXTRA_INCLUDE_FILES})
++SET (ORIG_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
+ 
+ SET (CMAKE_REQUIRED_DEFINITIONS ${SYSFLAGS})
+ LIST (APPEND CMAKE_REQUIRED_LIBRARIES ${CARES_DEPENDENT_LIBS})
+ 
++# Apple SDKs declare functions newer than the deployment target.  The build
++# rejects calls to them with -Werror=partial-availability, so the symbol
++# checks must too, or they report functions the build cannot use.
++IF (APPLE)
++	CHECK_C_COMPILER_FLAG (-Werror=partial-availability HAVE_WERROR_PARTIAL_AVAILABILITY)
++	IF (HAVE_WERROR_PARTIAL_AVAILABILITY)
++		SET (CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -Werror=partial-availability")
++	ENDIF ()
++ENDIF ()
++
+ MACRO (CARES_EXTRAINCLUDE_IFSET var include)
+ 	IF (${var})
+ 		LIST (APPEND CMAKE_EXTRA_INCLUDE_FILES ${include})
+@@ -494,6 +505,7 @@ CHECK_FUNCTION_EXISTS (__system_property_get HAVE___SYSTEM_PROPERTY_GET)
+ SET (CMAKE_REQUIRED_DEFINITIONS ${ORIG_CMAKE_REQUIRED_DEEFINITIONS})
+ SET (CMAKE_REQUIRED_LIBRARIES ${ORIG_CMAKE_REQUIRED_LIBRARIES})
+ SET (CMAKE_EXTRA_INCLUDE_FILES ${ORIG_CMAKE_EXTRA_INCLUDE_FILES})
++SET (CMAKE_REQUIRED_FLAGS ${ORIG_CMAKE_REQUIRED_FLAGS})
+ 
+ 
+ ################################################################################
+diff --git a/deps/cares/RELEASE-NOTES.md b/deps/cares/RELEASE-NOTES.md
+index 93cc10fc74..21ba0cdb6d 100644
+--- a/deps/cares/RELEASE-NOTES.md
++++ b/deps/cares/RELEASE-NOTES.md
+@@ -1,3 +1,104 @@
++## c-ares version 1.34.9 - October 19 2026
++
++This is a security release.
++
++Security:
++* Memory corruption when an application cancels its lookups after a
++  connection failure. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-wpr3-8q3r-4q8c
++* A DNS reply that arrived from a different server than the one queried could
++  be accepted. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-fqh5-3x7m-wp44
++* Use-after-free of a lookup after shutting down a failed connection. Please
++  see https://github.com/c-ares/c-ares/security/advisories/GHSA-97vq-4mxv-7vhm
++* Use-after-free when an application cancels lookups from a callback, or shuts
++  a channel down. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-rf6g-ww74-97qh
++* Use-after-free of a connection after the socket-state callback returns.
++  Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-mw23-pfg6-2x9r
++* Use-after-free when an application cancels lookups from a server-state
++  callback. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-v33j-65h4-4ch8
++* Use-after-free of a server record when an application changes its DNS
++  servers from a callback. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-pj7p-v3cw-hq66
++* Use-after-free of a cached DNS answer while the application is still reading
++  it. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-grv7-fq5q-9vfc
++* Buffer overflow when `ares_dup()` or `ares_save_options()` runs while
++  another thread changes the servers. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-ph6c-3cvx-mq6v
++* Uninitialized memory returned for a numeric IPv6 name with a prefix length.
++  Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-cfcv-8v2j-qj6r
++* The query cache could return an answer obtained using different EDNS
++  options. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-wrgc-prmw-27xh
++
++Changes:
++* Answers served from the query cache now report their remaining TTL rather
++  than the TTL originally received.
++* `ares_inet_pton()` rejects a "/bits" prefix length and returns 0, rather
++  than -1, for any input it cannot parse.
++* UDP replies must now come from the server's port as well as its address.
++  Custom `arecvfrom` socket functions (`ares_set_socket_functions_ex()` or
++  `ares_set_socket_functions()`) must fill in the full source address,
++  including the port. For compatibility, a reported port of 0 checks only the
++  address, but such implementations are insecure and should be fixed.
++  [PR #1370](https://github.com/c-ares/c-ares/pull/1370)
++* Document that socket functions and socket, configure and pending-write
++  callbacks must not call c-ares functions on the same channel.
++  [PR #1360](https://github.com/c-ares/c-ares/pull/1360)
++
++Bugfixes:
++* `ares_dup()`: don't leave the new channel bound to the source channel.
++  [PR #1333](https://github.com/c-ares/c-ares/pull/1333)
++* `ares_init_options()`: don't report the default query cache as a caller-set
++  option. [PR #1354](https://github.com/c-ares/c-ares/pull/1354)
++* Clamp DNS record TTLs to the signed int range used by public APIs.
++  [PR #1313](https://github.com/c-ares/c-ares/pull/1313)
++* `ares_dns_write()`: reject messages larger than 64KB.
++  [PR #1314](https://github.com/c-ares/c-ares/pull/1314)
++* `ares_dns_parse()`: accept legacy compressed RDATA names.
++  [PR #1326](https://github.com/c-ares/c-ares/pull/1326)
++* `ares_parse_a_reply()`/`ares_parse_aaaa_reply()`: ignore a negative
++  `*naddrttls`. [PR #1302](https://github.com/c-ares/c-ares/pull/1302)
++* select event backend: refuse descriptors >= `FD_SETSIZE` instead of
++  overflowing `fd_set`. [PR #1312](https://github.com/c-ares/c-ares/pull/1312)
++* Strip inline comments from resolv.conf values.
++  [PR #1276](https://github.com/c-ares/c-ares/pull/1276)
++* Ignore absurd resolv.conf retry/attempts values.
++  [PR #1315](https://github.com/c-ares/c-ares/pull/1315)
++* Zero-initialize the server config when parsing nameserver URIs.
++  [PR #1325](https://github.com/c-ares/c-ares/pull/1325)
++* URI parsing: roll back the ':' probe when it lands past the '@'.
++  [PR #1265](https://github.com/c-ares/c-ares/pull/1265)
++* Do not assume `gethostname()` NUL-terminates its buffer.
++  [PR #1269](https://github.com/c-ares/c-ares/pull/1269)
++* Combine the hash table seed with XOR instead of OR.
++  [PR #1330](https://github.com/c-ares/c-ares/pull/1330)
++* Turn off stdio buffering when loading a file.
++  [PR #939](https://github.com/c-ares/c-ares/pull/939)
++* Guard `pipe2()` on Apple platforms to prevent unguarded availability
++  warnings. [PR #1328](https://github.com/c-ares/c-ares/pull/1328)
++
++Thanks go to these friendly people for their efforts and contributions for this
++release:
++
++* (@ahillspace)
++* (@anon5376)
++* Brad House (@bradh352)
++* Nikolaos Chatzikonstantinou (@createyourpersonalaccount)
++* Dev (@devdgna)
++* (@evilgensec)
++* Ilias (@iliasabk)
++* (@jdymitarai)
++* (@jmestwa-coder)
++* Manohar Paturi (@ManoharPaturi)
++* (@mardgez13)
++
++
+ ## c-ares version 1.34.8 - July 7 2026
+ 
+ This is a bugfix release.
+diff --git a/deps/cares/aminclude_static.am b/deps/cares/aminclude_static.am
+index 9a00ba7891..a1989f9af2 100644
+--- a/deps/cares/aminclude_static.am
++++ b/deps/cares/aminclude_static.am
+@@ -1,6 +1,6 @@
+ 
+ # aminclude_static.am generated automatically by Autoconf
+-# from AX_AM_MACROS_STATIC on Tue Jul  7 16:14:13 UTC 2026
++# from AX_AM_MACROS_STATIC on Tue Oct 20 02:31:56 UTC 2026
+ 
+ 
+ # Code coverage
+diff --git a/deps/cares/configure b/deps/cares/configure
+index c2318a1c3b..7ad03b85f0 100755
+--- a/deps/cares/configure
++++ b/deps/cares/configure
+@@ -1,6 +1,6 @@
+ #! /bin/sh
+ # Guess values for system-dependent variables and create Makefiles.
+-# Generated by GNU Autoconf 2.71 for c-ares 1.34.8.
++# Generated by GNU Autoconf 2.71 for c-ares 1.34.9.
+ #
+ # Report bugs to <c-ares mailing list: http://lists.haxx.se/listinfo/c-ares>.
+ #
+@@ -621,8 +621,8 @@ MAKEFLAGS=
+ # Identity of this package.
+ PACKAGE_NAME='c-ares'
+ PACKAGE_TARNAME='c-ares'
+-PACKAGE_VERSION='1.34.8'
+-PACKAGE_STRING='c-ares 1.34.8'
++PACKAGE_VERSION='1.34.9'
++PACKAGE_STRING='c-ares 1.34.9'
+ PACKAGE_BUGREPORT='c-ares mailing list: http://lists.haxx.se/listinfo/c-ares'
+ PACKAGE_URL=''
+ 
+@@ -1430,7 +1430,7 @@ if test "$ac_init_help" = "long"; then
+   # Omit some internal or obsolete options to make the list less imposing.
+   # This message is too long to be a string in the A/UX 3.1 sh.
+   cat <<_ACEOF
+-\`configure' configures c-ares 1.34.8 to adapt to many kinds of systems.
++\`configure' configures c-ares 1.34.9 to adapt to many kinds of systems.
+ 
+ Usage: $0 [OPTION]... [VAR=VALUE]...
+ 
+@@ -1501,7 +1501,7 @@ fi
+ 
+ if test -n "$ac_init_help"; then
+   case $ac_init_help in
+-     short | recursive ) echo "Configuration of c-ares 1.34.8:";;
++     short | recursive ) echo "Configuration of c-ares 1.34.9:";;
+    esac
+   cat <<\_ACEOF
+ 
+@@ -1647,7 +1647,7 @@ fi
+ test -n "$ac_init_help" && exit $ac_status
+ if $ac_init_version; then
+   cat <<\_ACEOF
+-c-ares configure 1.34.8
++c-ares configure 1.34.9
+ generated by GNU Autoconf 2.71
+ 
+ Copyright (C) 2021 Free Software Foundation, Inc.
+@@ -2271,7 +2271,7 @@ cat >config.log <<_ACEOF
+ This file contains any messages produced by compilers while
+ running configure, to aid debugging if configure makes a mistake.
+ 
+-It was created by c-ares $as_me 1.34.8, which was
++It was created by c-ares $as_me 1.34.9, which was
+ generated by GNU Autoconf 2.71.  Invocation command line was
+ 
+   $ $0$ac_configure_args_raw
+@@ -3245,7 +3245,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+ 
+ 
+ 
+-CARES_VERSION_INFO="21:7:19"
++CARES_VERSION_INFO="21:8:19"
+ 
+ 
+ 
+@@ -6818,7 +6818,7 @@ fi
+ 
+ # Define the identity of the package.
+  PACKAGE='c-ares'
+- VERSION='1.34.8'
++ VERSION='1.34.9'
+ 
+ 
+ printf "%s\n" "#define PACKAGE \"$PACKAGE\"" >>confdefs.h
+@@ -23381,6 +23381,95 @@ fi
+ 
+ 
+ 
++if test "x$host_vendor" = "xapple"
++then :
++
++  cares_save_cflags="$CFLAGS"
++
++
++
++
++for flag in -Werror=partial-availability; do
++  as_CACHEVAR=`printf "%s\n" "ax_cv_check_cflags__$flag" | $as_tr_sh`
++{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether the C compiler accepts $flag" >&5
++printf %s "checking whether the C compiler accepts $flag... " >&6; }
++if eval test \${$as_CACHEVAR+y}
++then :
++  printf %s "(cached) " >&6
++else $as_nop
++
++  ax_check_save_flags=$CFLAGS
++  if test x"$GCC" = xyes ; then
++    add_gnu_werror="-Werror"
++  fi
++  CFLAGS="$CFLAGS  $flag $add_gnu_werror"
++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++
++int
++main (void)
++{
++
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_c_try_compile "$LINENO"
++then :
++  eval "$as_CACHEVAR=yes"
++else $as_nop
++  eval "$as_CACHEVAR=no"
++fi
++rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
++  CFLAGS=$ax_check_save_flags
++fi
++eval ac_res=\$$as_CACHEVAR
++	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
++printf "%s\n" "$ac_res" >&6; }
++if eval test \"x\$"$as_CACHEVAR"\" = x"yes"
++then :
++
++if test ${CFLAGS+y}
++then :
++
++  case " $CFLAGS " in #(
++  *" $flag "*) :
++    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: : CFLAGS already contains \$flag"; } >&5
++  (: CFLAGS already contains $flag) 2>&5
++  ac_status=$?
++  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; } ;; #(
++  *) :
++
++     as_fn_append CFLAGS " $flag"
++     { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: : CFLAGS=\"\$CFLAGS\""; } >&5
++  (: CFLAGS="$CFLAGS") 2>&5
++  ac_status=$?
++  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }
++     ;;
++esac
++
++else $as_nop
++
++  CFLAGS=$flag
++  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: : CFLAGS=\"\$CFLAGS\""; } >&5
++  (: CFLAGS="$CFLAGS") 2>&5
++  ac_status=$?
++  printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }
++
++fi
++
++else $as_nop
++  :
++fi
++
++done
++
++
++fi
++
+ ac_fn_check_decl "$LINENO" "strnlen" "ac_cv_have_decl_strnlen" "$cares_all_includes
+ " "$ac_c_undeclared_builtin_options" "CFLAGS"
+ if test "x$ac_cv_have_decl_strnlen" = xyes
+@@ -23781,6 +23870,12 @@ then :
+ printf "%s\n" "#define HAVE___SYSTEM_PROPERTY_GET 1" >>confdefs.h
+ 
+ fi
++if test "x$host_vendor" = "xapple"
++then :
++
++  CFLAGS="$cares_save_cflags"
++
++fi
+ 
+ 
+ 
+@@ -28238,7 +28333,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
+ # report actual input values of CONFIG_FILES etc. instead of their
+ # values after options handling.
+ ac_log="
+-This file was extended by c-ares $as_me 1.34.8, which was
++This file was extended by c-ares $as_me 1.34.9, which was
+ generated by GNU Autoconf 2.71.  Invocation command line was
+ 
+   CONFIG_FILES    = $CONFIG_FILES
+@@ -28306,7 +28401,7 @@ ac_cs_config_escaped=`printf "%s\n" "$ac_cs_config" | sed "s/^ //; s/'/'\\\\\\\\
+ cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1
+ ac_cs_config='$ac_cs_config_escaped'
+ ac_cs_version="\\
+-c-ares config.status 1.34.8
++c-ares config.status 1.34.9
+ configured by $0, generated by GNU Autoconf 2.71,
+   with options \\"\$ac_cs_config\\"
+ 
+diff --git a/deps/cares/configure.ac b/deps/cares/configure.ac
+index 637dfb153b..40522d909a 100644
+--- a/deps/cares/configure.ac
++++ b/deps/cares/configure.ac
+@@ -2,10 +2,10 @@ dnl Copyright (C) The c-ares project and its contributors
+ dnl SPDX-License-Identifier: MIT
+ AC_PREREQ([2.69])
+ 
+-AC_INIT([c-ares], [1.34.8],
++AC_INIT([c-ares], [1.34.9],
+   [c-ares mailing list: http://lists.haxx.se/listinfo/c-ares])
+ 
+-CARES_VERSION_INFO="21:7:19"
++CARES_VERSION_INFO="21:8:19"
+ dnl This flag accepts an argument of the form current[:revision[:age]]. So,
+ dnl passing -version-info 3:12:1 sets current to 3, revision to 12, and age to
+ dnl 1.
+@@ -551,6 +551,14 @@ dnl https://mailman.videolan.org/pipermail/vlc-devel/2015-March/101802.html
+ dnl which would require we check each individually and provide function arguments
+ dnl for the test.
+ 
++dnl On Apple hosts, header availability macros declare functions newer than the
++dnl deployment target.  Ensure -Werror=partial-availability is used during
++dnl declaration checks so too-new symbols are correctly reported as missing.
++AS_IF([test "x$host_vendor" = "xapple"], [
++  cares_save_cflags="$CFLAGS"
++  AX_APPEND_COMPILE_FLAGS([-Werror=partial-availability], [CFLAGS])
++])
++
+ AC_CHECK_DECL(strnlen,         [AC_DEFINE([HAVE_STRNLEN],           1, [Define to 1 if you have `strnlen`]        )], [], $cares_all_includes)
+ AC_CHECK_DECL(memmem,          [AC_DEFINE([HAVE_MEMMEM],            1, [Define to 1 if you have `memmem`]         )], [], $cares_all_includes)
+ AC_CHECK_DECL(recv,            [AC_DEFINE([HAVE_RECV],              1, [Define to 1 if you have `recv`]           )], [], $cares_all_includes)
+@@ -601,6 +609,9 @@ AC_CHECK_DECL(ConvertInterfaceLuidToNameA, [AC_DEFINE([HAVE_CONVERTINTERFACELUID
+ AC_CHECK_DECL(NotifyIpInterfaceChange,     [AC_DEFINE([HAVE_NOTIFYIPINTERFACECHANGE],     1, [Define to 1 if you have `NotifyIpInterfaceChange`]    )], [], $cares_all_includes)
+ AC_CHECK_DECL(RegisterWaitForSingleObject, [AC_DEFINE([HAVE_REGISTERWAITFORSINGLEOBJECT], 1, [Define to 1 if you have `RegisterWaitForSingleObject`])], [], $cares_all_includes)
+ AC_CHECK_DECL(__system_property_get,       [AC_DEFINE([HAVE___SYSTEM_PROPERTY_GET],       1, [Define to 1 if you have `__system_property_get`]      )], [], $cares_all_includes)
++AS_IF([test "x$host_vendor" = "xapple"], [
++  CFLAGS="$cares_save_cflags"
++])
+ 
+ 
+ dnl ###############################################################################
+diff --git a/deps/cares/docs/ares_cancel.3 b/deps/cares/docs/ares_cancel.3
+index 967a946b49..069f226c10 100644
+--- a/deps/cares/docs/ares_cancel.3
++++ b/deps/cares/docs/ares_cancel.3
+@@ -21,6 +21,23 @@ These calls give the callbacks a chance to clean up any state which might have
+ been stored in their arguments. If such a callback invocation adds a new
+ request to the channel, that request will \fInot\fP be cancelled by the
+ current invocation of \fBares_cancel(3)\fP.
++.SH REENTRANCY
++A callback invoked by
++.BR ares_cancel (3)
++may call c-ares functions on the same channel. The channel lock is recursive,
++and each query is unlinked from the library's internal structures before its
++callback runs, so a reentrant call cannot encounter a query that is part-way
++through being torn down.
++
++This includes starting new lookups, as described above, and reconfiguring the
++server list with
++.BR ares_set_servers_csv (3)
++and related functions.
++
++.SH AVAILABILITY
++The reentrancy guarantee described above applies as of c-ares version 1.35.0,
++and c-ares version 1.34.9 on the 1.34 branch.
++
+ .SH SEE ALSO
+ .BR ares_init (3)
+ .BR ares_destroy (3)
+diff --git a/deps/cares/docs/ares_destroy.3 b/deps/cares/docs/ares_destroy.3
+index d1984b7cc9..0b6380e609 100644
+--- a/deps/cares/docs/ares_destroy.3
++++ b/deps/cares/docs/ares_destroy.3
+@@ -20,6 +20,13 @@ by the channel.
+ channel, passing a status of \fIARES_EDESTRUCTION\fP. These calls give the
+ callbacks a chance to clean up any state which might have been stored in their
+ arguments. A callback must not add new requests to a channel being destroyed.
++Such a request is refused: the request is not started, and its callback is
++invoked with a status of \fIARES_EDESTRUCTION\fP so that any state attached to
++its argument can be released. A request made from within that notification is
++refused without a further notification, so that a callback which responds to
++failure by retrying cannot recurse without bound; its argument is not handed
++back. This applies as of c-ares version 1.35.0, and c-ares version 1.34.9 on
++the 1.34 branch.
+ 
+ There is no ability to make this function thread-safe.  No additional calls
+ using this channel may be made once this function is called.
+diff --git a/deps/cares/docs/ares_dns_record.3 b/deps/cares/docs/ares_dns_record.3
+index 723f9ab4b9..7a565fd29c 100644
+--- a/deps/cares/docs/ares_dns_record.3
++++ b/deps/cares/docs/ares_dns_record.3
+@@ -438,6 +438,9 @@ is returned on success,
+ is returned on out of memory,
+ .B ARES_EFORMERR
+ is returned on misuse.
++\fIares_dns_write(3)\fP also returns
++.B ARES_EBADQUERY
++if the message is too large to encode.
+ 
+ \fIares_dns_record_get_id(3)\fP, \fIares_dns_record_set_id(3)\fP,
+ \fIares_dns_record_get_flags(3)\fP, \fIares_dns_record_get_opcode(3)\fP,
+diff --git a/deps/cares/docs/ares_inet_pton.3 b/deps/cares/docs/ares_inet_pton.3
+index 34b2df063c..19c5fdfda3 100644
+--- a/deps/cares/docs/ares_inet_pton.3
++++ b/deps/cares/docs/ares_inet_pton.3
+@@ -12,8 +12,9 @@ ares_inet_pton \- convert an IPv4 or IPv6 address from text to binary form
+ int ares_inet_pton(int \fIaf\fP, const char *\fIsrc\fP, void *\fIdst\fP);
+ .fi
+ .SH DESCRIPTION
+-This is a portable version with the identical functionality of the commonly
+-available \fIinet_pton\fP.
++This is a portable version of the commonly available \fIinet_pton\fP.  It
++behaves the same for AF_INET6, and for AF_INET it additionally accepts the
++legacy forms described below.
+ 
+ The ares_inet_pton() function converts the address in its standard text
+ presentation form into its numeric binary form. The \fBaf\fP argument shall
+@@ -23,9 +24,20 @@ in. The \fBdst\fP argument points to a buffer into which the function stores
+ the numeric address; this shall be large enough to hold the numeric address
+ (32 bits for AF_INET, 128 bits for AF_INET6).
+ 
++The \fBsrc\fP argument must be an address, not a network: a "/bits" prefix
++length suffix (CIDR notation) is not accepted and the function returns 0 for
++such input.  On success, the whole address (4 bytes for AF_INET, 16 bytes for
++AF_INET6) is always written to \fBdst\fP.  Versions of c-ares before 1.34.9
++accepted a prefix length here.
++
++Unlike POSIX \fIinet_pton\fP, AF_INET also accepts shortened forms such as
++"10.1" and hexadecimal forms such as "0x0a000001".  Octets that are not given
++are set to zero, so "10.1" is 10.1.0.0.
++
+ It returns 1 if the address was valid for the specified address family, or 0
+ if the address was not parseable in the specified address family, or -1 if
+-some system error occurred (in which case errno will have been set).
++the address family is not supported (in which case errno will have been set
++to EAFNOSUPPORT).
+ 
+ .SH SEE ALSO
+ .BR ares_init (3),
+diff --git a/deps/cares/docs/ares_init_options.3 b/deps/cares/docs/ares_init_options.3
+index 9b3b481535..1ce7fb8e30 100644
+--- a/deps/cares/docs/ares_init_options.3
++++ b/deps/cares/docs/ares_init_options.3
+@@ -231,6 +231,21 @@ will be passed the socket whose state has changed;
+ will be set to true if the socket should listen for read events, and
+ .I writable
+ will be set to true if the socket should listen for write events.
++
++This callback may call c-ares functions on the same channel, including
++.BR ares_cancel (3)
++and the server configuration functions. Notifications are delivered once the
++library has finished the work that produced them rather than part-way through
++it, so a reentrant call cannot close a socket the library is still using. They
++arrive in the order the state changes occurred, and always before the
++outermost c-ares call returns. A call made from within a callback is not the
++outermost one, so notifications it produces arrive after it has returned.
++.BR ares_destroy (3)
++is no exception: the closure of every socket the channel still holds is
++reported before it returns, and the callback is never invoked afterwards.
++This applies as of c-ares version 1.35.0, and c-ares version 1.34.9 on the
++1.34 branch.
++
+ The value of
+ .I sock_state_cb_data
+ will be passed as the
+@@ -309,7 +324,16 @@ with the maximum number of seconds a query result may be cached which will
+ override a larger TTL in the response message. This must be a non-zero value
+ otherwise the cache will be disabled. Choose a reasonable value for your
+ application such as 300 (5 minutes) or 3600 (1 hour).  The query cache is
+-automatically flushed if a server configuration change is made.
++automatically flushed if a server configuration change is made.  As of c-ares
++1.35.0, and c-ares 1.34.9 on the 1.34 branch, a cached answer reports its
++remaining time to live rather than the
++original value received from the server, so TTLs returned on a cache hit
++decrease as the entry ages.  Two lookups share a cached answer only if their
++EDNS state matches: the version, the flag bits including DNSSEC OK, and every
++EDNS option other than the DNS cookie and the advertised UDP payload size,
++which are both ignored.  Options are compared in the order the application
++added them.  An application that attaches its own options and varies them
++between otherwise identical lookups gets a separate cache entry for each.
+ .br
+ .TP 18
+ .B ARES_OPT_EVENT_THREAD
+diff --git a/deps/cares/docs/ares_set_pending_write_cb.3 b/deps/cares/docs/ares_set_pending_write_cb.3
+index 3c7712a69d..1c56ddfbf6 100644
+--- a/deps/cares/docs/ares_set_pending_write_cb.3
++++ b/deps/cares/docs/ares_set_pending_write_cb.3
+@@ -36,8 +36,9 @@ should call \fBares_process_pending_write(3)\fP using the channel associated
+ with the callback.  Each time the callback is triggered must result in a call
+ to \fBares_process_pending_write(3)\fP from the caller's event loop otherwise
+ stalls and timeouts may occur.  The callback \fBmust not\fP call
+-\fBares_process_pending_write(3)\fP directly as otherwise it would invalidate
+-any advantage of this use-case.
++any c-ares function on the same channel; its only job is to wake the event
++loop.  In particular, calling \fBares_process_pending_write(3)\fP directly
++would invalidate any advantage of this use-case.
+ 
+ This is considered an optimization, especially when using TLS-based connections
+ which add additional overhead to the data stream.  Due to the asyncronous nature
+diff --git a/deps/cares/docs/ares_set_server_state_callback.3 b/deps/cares/docs/ares_set_server_state_callback.3
+index 04fbde4c7a..e95db327ce 100644
+--- a/deps/cares/docs/ares_set_server_state_callback.3
++++ b/deps/cares/docs/ares_set_server_state_callback.3
+@@ -47,6 +47,31 @@ the DNS servers used by an ares channel. For example, it can be used to track
+ metrics about the numbers and types of queries sent to each server or to
+ detect when a server is uncontactable or unhealthy.
+ 
++.SH REENTRANCY
++The server state callback may call c-ares functions on the same channel,
++including
++.BR ares_cancel (3)
++and the server configuration functions. The channel lock is recursive and the
++library holds no query, connection or server state across the callback.
++
++Notifications are queued and delivered once the library has finished the work
++that produced them, rather than part-way through it. A notification is
++therefore observed after the processing pass that generated it, not during.
++
++The callback and its
++.I user_data
++are read when the notification is delivered, not when it is queued. An
++application that replaces its callback between those two points will see the
++notification delivered to the new one; unregistering by passing a
++.B NULL
++callback discards any notification still queued.
++
++This applies to a replacement made from within a c-ares callback, where the
++channel lock is held.
++.BR ares_set_server_state_callback (3)
++does not take the channel lock, so replacing the callback from another thread
++while the channel is processing is not synchronized against delivery.
++
+ .SH FLAGS
+ .TP 5
+ .B ARES_SERV_STATE_UDP
+@@ -58,5 +83,9 @@ Indicates that the query was tried over TCP.
+ .SH AVAILABILITY
+ This function was first introduced in c-ares version 1.29.0.
+ 
++The reentrancy guarantee described above applies as of c-ares version 1.35.0,
++and c-ares version 1.34.9 on the 1.34 branch.
++
+ .SH SEE ALSO
+-.BR ares_get_servers_csv (3)
++.BR ares_get_servers_csv (3),
++.BR ares_cancel (3)
+diff --git a/deps/cares/docs/ares_set_servers_csv.3 b/deps/cares/docs/ares_set_servers_csv.3
+index f1435143f5..f9f5b82e28 100644
+--- a/deps/cares/docs/ares_set_servers_csv.3
++++ b/deps/cares/docs/ares_set_servers_csv.3
+@@ -126,6 +126,23 @@ are identical.  Prior versions would simply omit ports in \fBares_set_servers_cs
+ but due to the addition of link local interface support, this difference was
+ removed.
+ 
++.SH REENTRANCY
++These functions may be called from within a c-ares callback. Removing a server
++closes its connections, which ends the lookups that were using it and invokes
++their callbacks, so a reconfiguration can be requested from inside one.
++
++A nested call reconciles the whole server list, and the outer call leaves that
++result in place rather than deleting the servers the nested call installed.
++The consequence is that the outer call's own list does not survive, even
++though it returns
++.B ARES_SUCCESS:
++the last configuration applied is the one the channel keeps. An application
++that reconfigures from a callback should therefore not assume the list it
++passed to the outer call is in effect when that call returns.
++
++This applies as of c-ares version 1.35.0, and c-ares version 1.34.9 on the
++1.34 branch.
++
+ .SH EXAMPLE
+ .nf
+ 192.168.1.100,[fe80::1]:53%eth0,dns://192.168.1.1?tcpport=1153
+diff --git a/deps/cares/docs/ares_set_socket_callback.3 b/deps/cares/docs/ares_set_socket_callback.3
+index d94b988535..6b3d905311 100644
+--- a/deps/cares/docs/ares_set_socket_callback.3
++++ b/deps/cares/docs/ares_set_socket_callback.3
+@@ -26,6 +26,10 @@ callback function will be invoked after the socket has been created, and
+ connected to the remote server. The callback must return ARES_SUCCESS if
+ things are fine, or return -1 to signal an error. A returned error will
+ abort the ares operation.
++
++The callback is invoked while c-ares is part-way through opening a
++connection.  It must not call any c-ares function on the same channel; see
++\fIares_set_socket_functions(3)\fP.
+ .SH SEE ALSO
+ .BR ares_init_options (3),
+ .BR ares_set_socket_configure_callback (3)
+diff --git a/deps/cares/docs/ares_set_socket_configure_callback.3 b/deps/cares/docs/ares_set_socket_configure_callback.3
+index d26e79f43f..c3e1d70522 100644
+--- a/deps/cares/docs/ares_set_socket_configure_callback.3
++++ b/deps/cares/docs/ares_set_socket_configure_callback.3
+@@ -26,6 +26,10 @@ before it has been connected to the remote server, which is an ideal time
+ to configure various socket options.  The callback must return ARES_SUCCESS
+ if things are fine, or return -1 to signal an error. A returned error will
+ abort the ares operation.
++
++The callback is invoked while c-ares is part-way through opening a
++connection.  It must not call any c-ares function on the same channel; see
++\fIares_set_socket_functions(3)\fP.
+ .SH SEE ALSO
+ .BR ares_init_options (3),
+ .BR ares_set_socket_callback (3)
+diff --git a/deps/cares/docs/ares_set_socket_functions.3 b/deps/cares/docs/ares_set_socket_functions.3
+index 8a903dc652..75c621cb48 100644
+--- a/deps/cares/docs/ares_set_socket_functions.3
++++ b/deps/cares/docs/ares_set_socket_functions.3
+@@ -149,6 +149,20 @@ a socket. Additional flags controlling behavior are in
+ address, the callback should fill this in. The \fIflags\fP parameter is
+ currently unused. See \fBrecvfrom(2)\fP.
+ 
++For UDP, the callback must fill in the full source address, including the
++source port, exactly as \fBrecvfrom(2)\fP does. c-ares discards a datagram
++whose source address does not match the server it queried, or whose source
++port does not match that server's port.
++
++\fBSecurity:\fP for compatibility with older callbacks, a reported source port
++of 0 is treated as unknown and only the address is checked. A callback that
++does not fill in the source port is therefore insecure: c-ares will accept
++answers sent from any port on the server's address, for example from another
++DNS server or any other service or user able to send UDP from that host, and
++those answers are cached and returned to the application. Such an
++implementation is non-compliant and should be fixed to report the real source
++port.
++
+ .TP 8
+ .B ares_ssize_t (*\fIasendto\fP)(ares_socket_t \fIfd\fP, const void * \fIbuffer\fP, size_t \fIlength\fP, int \fIflags\fP, const struct sockaddr * \fIaddress\fP, ares_socklen_t \fIaddress_len\fP, void * \fIuser_data\fP)
+ .br
+@@ -305,6 +319,12 @@ Receives data from remote socket endpoint, if available. If the \fIaddr\fP
+ parameter is not NULL and the connection protocol provides the source address,
+ the callback should fill this in. See \fBrecvfrom(2)\fP
+ 
++For UDP, the callback must fill in the full source address, including the
++source port, as described above for \fIarecvfrom\fP in
++\fBares_set_socket_functions_ex\fP. \fBSecurity:\fP a callback that
++does not fill in the source port is insecure, and c-ares will accept answers
++sent from any port on the server's address.
++
+ .TP 8
+ .B ares_ssize_t (*\fIasendv\fP)(ares_socket_t \fIfd\fP, const struct iovec * \fIdata\fP, int \fIlen\fP, void * \fIuser_data\fP)
+ .br
+@@ -318,6 +338,18 @@ referenced, and must thus remain valid through out the channels and any created
+ socket's lifetime.  However, the \fBares_set_socket_functions_ex(3)\fP struct is
+ duplicated and does not need to survive past the call to the function.
+ 
++.PP
++These callback functions are invoked while c-ares is part-way through
++creating, connecting, writing to, reading from or closing a socket.  They
++must only perform the requested socket operation and must not call any c-ares
++function on the same channel; for example they must not enqueue or cancel
++queries, process socket events, change the server configuration, or destroy
++the channel.  Doing so is not supported.  Work of that kind belongs in a query
++callback, the server state callback set by
++\fIares_set_server_state_callback(3)\fP, or the socket state callback
++(\fBARES_OPT_SOCK_STATE_CB\fP) described in \fIares_init_options(3)\fP.
++Functions may be called on a different channel.
++
+ .SH AVAILABILITY
+ ares_socket_functions added in c-ares 1.13.0, ares_socket_functions_ex added in
+ c-ares 1.34.0
+diff --git a/deps/cares/include/ares_version.h b/deps/cares/include/ares_version.h
+index f836d5f918..43dc849f53 100644
+--- a/deps/cares/include/ares_version.h
++++ b/deps/cares/include/ares_version.h
+@@ -32,8 +32,8 @@
+ 
+ #define ARES_VERSION_MAJOR 1
+ #define ARES_VERSION_MINOR 34
+-#define ARES_VERSION_PATCH 8
+-#define ARES_VERSION_STR   "1.34.8"
++#define ARES_VERSION_PATCH 9
++#define ARES_VERSION_STR   "1.34.9"
+ 
+ /* NOTE: We cannot make the version string a C preprocessor stringify operation
+  *       due to assumptions made by integrators that aren't properly using
+diff --git a/deps/cares/src/lib/Makefile.in b/deps/cares/src/lib/Makefile.in
+index a9630300c0..3f0a71208e 100644
+--- a/deps/cares/src/lib/Makefile.in
++++ b/deps/cares/src/lib/Makefile.in
+@@ -15,7 +15,7 @@
+ @SET_MAKE@
+ 
+ # aminclude_static.am generated automatically by Autoconf
+-# from AX_AM_MACROS_STATIC on Tue Jul  7 16:14:13 UTC 2026
++# from AX_AM_MACROS_STATIC on Tue Oct 20 02:31:56 UTC 2026
+ 
+ # Copyright (C) The c-ares project and its contributors
+ # SPDX-License-Identifier: MIT
+diff --git a/deps/cares/src/lib/ares_addrinfo_localhost.c b/deps/cares/src/lib/ares_addrinfo_localhost.c
+index b65cf48a2f..cacd0237dc 100644
+--- a/deps/cares/src/lib/ares_addrinfo_localhost.c
++++ b/deps/cares/src/lib/ares_addrinfo_localhost.c
+@@ -109,7 +109,7 @@ ares_status_t ares_append_ai_node(int aftype, unsigned short port,
+   node->ai_addr    = sa;
+   node->ai_family  = aftype;
+   node->ai_addrlen = salen;
+-  node->ai_ttl     = (int)ttl;
++  node->ai_ttl     = ares_dns_ttl_as_int(ttl);
+ 
+   return ARES_SUCCESS;
+ }
+diff --git a/deps/cares/src/lib/ares_cancel.c b/deps/cares/src/lib/ares_cancel.c
+index 75600dea6b..aa167e4486 100644
+--- a/deps/cares/src/lib/ares_cancel.c
++++ b/deps/cares/src/lib/ares_cancel.c
+@@ -38,10 +38,10 @@ void ares_cancel(ares_channel_t *channel)
+   }
+ 
+   ares_channel_lock(channel);
++  ares_deferred_cb_enter(channel);
+ 
+   if (ares_llist_len(channel->all_queries) > 0) {
+     ares_llist_node_t *node = NULL;
+-    ares_llist_node_t *next = NULL;
+ 
+     /* Swap list heads, so that only those queries which were present on entry
+      * into this function are cancelled. New queries added by callbacks of
+@@ -57,21 +57,29 @@ void ares_cancel(ares_channel_t *channel)
+       goto done;                        /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+ 
+-    node = ares_llist_node_first(list_copy);
+-    while (node != NULL) {
++    /* Re-read the head each iteration rather than caching the next node: a
++     * callback below may cause other queries in this same list to be ended
++     * and their nodes destroyed. */
++    while ((node = ares_llist_node_first(list_copy)) != NULL) {
+       ares_query_t *query;
+ 
+-      /* Cache next since this node is being deleted */
+-      next = ares_llist_node_next(node);
++      query = ares_llist_node_claim(node);
+ 
+-      query                   = ares_llist_node_claim(node);
++      /* Must come first: node_claim() already destroyed this node, so
++       * ares_detach_query() would otherwise destroy it a second time. */
+       query->node_all_queries = NULL;
+ 
++      /* Detach from queries_by_qid, the connection and the timeout list
++       * before running user code.  Otherwise a reentrant teardown from
++       * within the callback -- ares_set_servers_csv(), or a new query
++       * hitting a connection error -- still finds this query, ends it a
++       * second time and frees it, and the ares_free_query() below then
++       * double-frees. */
++      ares_detach_query(query);
++
+       /* NOTE: its possible this may enqueue new queries */
+       query->callback(query->arg, ARES_ECANCELLED, 0, NULL);
+       ares_free_query(query);
+-
+-      node = next;
+     }
+ 
+     ares_llist_destroy(list_copy);
+@@ -83,5 +91,6 @@ void ares_cancel(ares_channel_t *channel)
+   ares_queue_notify_empty(channel);
+ 
+ done:
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ }
+diff --git a/deps/cares/src/lib/ares_close_sockets.c b/deps/cares/src/lib/ares_close_sockets.c
+index 7bb72c31ec..a3af721bc6 100644
+--- a/deps/cares/src/lib/ares_close_sockets.c
++++ b/deps/cares/src/lib/ares_close_sockets.c
+@@ -41,12 +41,47 @@ static void ares_requeue_queries(ares_conn_t  *conn,
+   }
+ }
+ 
++/*! Release a connection's memory.  Split from the unlink below so that the
++ *  two can happen at different times: a caller further up the stack may still
++ *  hold this pointer, and reading a detached connection is safe where reading
++ *  a freed one is not. */
++void ares_conn_reap(ares_conn_t *conn)
++{
++  if (conn == NULL) {
++    return; /* LCOV_EXCL_LINE: DefensiveCoding */
++  }
++
++  ares_buf_destroy(conn->in_buf);
++  ares_buf_destroy(conn->out_buf);
++  ares_llist_destroy(conn->queries_to_conn);
++  ares_free(conn);
++}
++
+ void ares_close_connection(ares_conn_t *conn, ares_status_t requeue_status)
+ {
+-  ares_server_t  *server  = conn->server;
+-  ares_channel_t *channel = server->channel;
++  ares_server_t  *server;
++  ares_channel_t *channel;
++
++  if (conn == NULL) {
++    return; /* LCOV_EXCL_LINE: DefensiveCoding */
++  }
++
++  /* Already torn down and awaiting reclamation.  Reaching here twice is
++   * ordinary once a connection can outlive its teardown: a caller holding it
++   * from before -- handle_conn_error() after a failed write, say -- closes it
++   * again without knowing.  Doing the work twice would requeue queries that
++   * have already moved and would put this connection on the pending list a
++   * second time, which is a double free. */
++  if (conn->flags & ARES_CONN_FLAG_DEAD) {
++    return;
++  }
+ 
+-  /* Unlink */
++  server  = conn->server;
++  channel = server->channel;
++
++  /* Unlink from everything that can find this connection.  After this it is
++   * unreachable by lookup, which is what stops anything new from picking it
++   * up; anything that already holds it is handled by the deferral below. */
+   ares_llist_node_claim(
+     ares_htable_asvp_get_direct(channel->connnode_by_socket, conn->fd));
+   ares_htable_asvp_remove(channel->connnode_by_socket, conn->fd);
+@@ -55,19 +90,40 @@ void ares_close_connection(ares_conn_t *conn, ares_status_t requeue_status)
+     server->tcp_conn = NULL;
+   }
+ 
+-  ares_buf_destroy(conn->in_buf);
+-  ares_buf_destroy(conn->out_buf);
++  /* Marked dead as soon as it is unlinked, before anything below can run
++   * application code.  ares_requeue_queries() ends queries terminally once
++   * their retries are exhausted, which invokes the application's callback; if
++   * the flag were set after that, a second ares_close_connection() reaching
++   * this connection in the meantime would run the body again -- closing the
++   * descriptor twice and listing the connection for reclamation twice, which
++   * is a double free.  It also gives ares_close_sockets() its termination
++   * condition: dead implies unlinked, so its re-read-the-head loop cannot see
++   * a dead connection and spin. */
++  conn->flags |= ARES_CONN_FLAG_DEAD;
+ 
+   /* Requeue queries to other connections */
+   ares_requeue_queries(conn, requeue_status);
+ 
+-  ares_llist_destroy(conn->queries_to_conn);
+-
+-  ares_conn_sock_state_cb_update(conn, ARES_CONN_STATE_NONE);
+-
+-  ares_socket_close(channel, conn->fd);
++  /* Hands the descriptor to the queued notification when one is due, so the
++   * application is told to stop watching it before it is closed.  Otherwise
++   * nothing will carry it and we close it here. */
++  if (!ares_conn_sock_state_cb_close(conn)) {
++    ares_socket_close(channel, conn->fd);
++  }
++  conn->fd = ARES_SOCKET_BAD;
++
++  /* If a library call is in progress it may be holding this connection --
++   * read_answers() and ares_send_query_int() both do, across code that can
++   * reach here.  Keep it readable until that call unwinds.  The buffers and
++   * the query list are freed by ares_conn_reap(), so a stale holder sees an
++   * emptied connection rather than freed memory. */
++  if (channel->deferred_cb_depth > 0) {
++    conn->next_pending     = channel->pending_conns;
++    channel->pending_conns = conn;
++    return;
++  }
+ 
+-  ares_free(conn);
++  ares_conn_reap(conn);
+ }
+ 
+ void ares_close_sockets(ares_server_t *server)
+@@ -76,6 +132,10 @@ void ares_close_sockets(ares_server_t *server)
+ 
+   while ((node = ares_llist_node_first(server->connections)) != NULL) {
+     ares_conn_t *conn = ares_llist_node_val(node);
++    /* This loop re-reads the head each time and relies on the close below
++     * unlinking it.  A dead connection returns early without unlinking, so
++     * one on this list would spin forever holding the channel lock. */
++    assert(!(conn->flags & ARES_CONN_FLAG_DEAD));
+     ares_close_connection(conn, ARES_SUCCESS);
+   }
+ }
+@@ -88,6 +148,7 @@ void ares_check_cleanup_conns(const ares_channel_t *channel)
+     return; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
++restart:
+   /* Iterate across each server */
+   for (snode = ares_slist_node_first(channel->servers); snode != NULL;
+        snode = ares_slist_node_next(snode)) {
+@@ -130,8 +191,12 @@ void ares_check_cleanup_conns(const ares_channel_t *channel)
+         continue;
+       }
+ 
+-      /* Clean it up */
++      /* Clean it up.  The close function is application code and may have
++       * reconfigured the servers, freeing the list nodes this walk holds --
++       * the server's, and the next connection's.  Start over; connections
++       * already closed are no longer listed, so this ends. */
+       ares_close_connection(conn, ARES_SUCCESS);
++      goto restart;
+     }
+   }
+ }
+diff --git a/deps/cares/src/lib/ares_conn.c b/deps/cares/src/lib/ares_conn.c
+index 6b315b0548..7711d8649e 100644
+--- a/deps/cares/src/lib/ares_conn.c
++++ b/deps/cares/src/lib/ares_conn.c
+@@ -26,19 +26,212 @@
+  */
+ #include "ares_private.h"
+ 
+-void ares_conn_sock_state_cb_update(ares_conn_t            *conn,
+-                                    ares_conn_state_flags_t flags)
++/*! A queued socket-state notification.  Holds the descriptor and the state,
++ *  never the connection, so a queued entry cannot outlive what it refers to.
++ *
++ *  When \c owns_fd is set, this message carries the only remaining reference to
++ *  the descriptor: the connection is gone and the descriptor is deliberately
++ *  left open until after the application has been told to stop watching it.
++ *  Closing first would let the number be reused -- by application code running
++ *  from a deferred query callback, for instance -- before the notification
++ *  naming it is delivered. */
++typedef struct {
++  ares_socket_t fd;
++  ares_bool_t   readable;
++  ares_bool_t   writable;
++  ares_bool_t   owns_fd;
++} ares_sock_state_msg_t;
++
++static ares_bool_t ares_sock_state_queue(ares_channel_t              *channel,
++                                         const ares_sock_state_msg_t *msg)
+ {
+-  ares_channel_t *channel = conn->server->channel;
++  if (channel->sock_state_queue == NULL) {
++    channel->sock_state_queue = ares_array_create(sizeof(*msg), NULL);
++    if (channel->sock_state_queue == NULL) {
++      return ARES_FALSE; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
++  if (ares_array_insertdata_last(channel->sock_state_queue, msg) !=
++      ARES_SUCCESS) {
++    return ARES_FALSE; /* LCOV_EXCL_LINE: OutOfMemory */
++  }
++
++  return ARES_TRUE;
++}
++
++/*! Deliver every socket-state notification the channel has queued.  Loops
++ *  rather than snapshotting: a callback is allowed to re-enter the library and
++ *  queue more, and those belong to this same delivery point. */
++static void ares_sock_state_dispatch(ares_channel_t *channel)
++{
++  while (ares_array_len(channel->sock_state_queue) > 0) {
++    ares_sock_state_msg_t msg;
++
++    if (ares_array_claim_at(&msg, sizeof(msg), channel->sock_state_queue, 0) !=
++        ARES_SUCCESS) {
++      break; /* LCOV_EXCL_LINE: DefensiveCoding */
++    }
++
++    if (channel->sock_state_cb != NULL) {
++      /* The public callback takes ints. */
++      channel->sock_state_cb(channel->sock_state_cb_data, msg.fd,
++                             msg.readable ? 1 : 0, msg.writable ? 1 : 0);
++    }
+ 
+-  if ((conn->state_flags & ARES_CONN_STATE_CBFLAGS) != flags &&
+-      channel->sock_state_cb) {
+-    channel->sock_state_cb(channel->sock_state_cb_data, conn->fd,
+-                           flags & ARES_CONN_STATE_READ ? 1 : 0,
+-                           flags & ARES_CONN_STATE_WRITE ? 1 : 0);
++    /* Told first, closed second -- the ordering the application depends on to
++     * keep its descriptor set honest. */
++    if (msg.owns_fd) {
++      ares_socket_close(channel, msg.fd);
++    }
++  }
++
++  ares_array_destroy(channel->sock_state_queue);
++  channel->sock_state_queue = NULL;
++}
++
++static void ares_deferred_cb_flush(ares_channel_t *channel)
++{
++  /* Only the outermost frame delivers: anything above us on the stack may
++   * still be holding the connection a reentrant call from one of these
++   * callbacks could free, or lookup state of its own that a callback could
++   * end.  That is why the outermost frame belongs to the public entry point
++   * and never to an internal helper; see ares_deferred_cb_enter().
++   *
++   * The dispatch below counts as a nesting level of its own.  Without that, a
++   * callback that calls back into the library re-enters here through the
++   * enter/leave pair on that call, drains the rest of the queue and destroys
++   * it underneath the loop -- and hands the next notification to the
++   * application from inside the current one.  With the counter held, the
++   * nested leave returns immediately and whatever it queued is picked up by
++   * the loop that is already running. */
++  if (channel->deferred_cb_depth > 0) {
++    return;
++  }
++  channel->deferred_cb_depth++;
++
++  /* Both kinds of deferred notification share this one delivery point.  Loop
++   * rather than calling each once: a socket-state callback may put the library
++   * on a path that queues a server-state notification, and the reverse, and
++   * both belong to this delivery point rather than the next one. */
++  while (ares_array_len(channel->sock_state_queue) > 0 ||
++         ares_array_len(channel->server_state_queue) > 0) {
++    ares_sock_state_dispatch(channel);
++    ares_server_state_dispatch(channel);
++  }
++
++  /* The outermost call is unwinding and the callbacks above have run, so
++   * nothing can still be holding a server or connection that was unlinked
++   * during it.  Now they can be freed. */
++  ares_deferred_reclaim(channel);
++
++  channel->deferred_cb_depth--;
++}
++
++void ares_deferred_reclaim(ares_channel_t *channel)
++{
++  /* Connections first: a pending server's connection list is already empty,
++   * but this keeps the ordering obvious rather than incidental. */
++  while (channel->pending_conns != NULL) {
++    ares_conn_t *conn      = channel->pending_conns;
++    channel->pending_conns = conn->next_pending;
++    conn->next_pending     = NULL;
++    ares_conn_reap(conn);
++  }
++
++  while (channel->pending_servers != NULL) {
++    ares_server_t *server    = channel->pending_servers;
++    channel->pending_servers = server->next_pending;
++    server->next_pending     = NULL;
++    ares_server_reap(server);
++  }
++}
++
++void ares_deferred_cb_enter(ares_channel_t *channel)
++{
++  channel->deferred_cb_depth++;
++}
++
++void ares_deferred_cb_leave(ares_channel_t *channel)
++{
++  if (channel->deferred_cb_depth > 0) {
++    channel->deferred_cb_depth--;
++  }
++  ares_deferred_cb_flush(channel);
++}
++
++ares_bool_t ares_conn_sock_state_cb_close(ares_conn_t *conn)
++{
++  ares_channel_t       *channel = conn->server->channel;
++  ares_sock_state_msg_t msg;
++
++  /* No callback to run, so nothing will ever carry this descriptor: the
++   * caller closes it itself, exactly as before. */
++  if (channel->sock_state_cb == NULL) {
++    return ARES_FALSE;
++  }
++
++  /* Already reported as unwatched, so no notification is due and no message
++   * will be queued to hold the descriptor. */
++  if ((conn->state_flags & ARES_CONN_STATE_CBFLAGS) == ARES_CONN_STATE_NONE) {
++    return ARES_FALSE;
++  }
++
++  msg.fd       = conn->fd;
++  msg.readable = ARES_FALSE;
++  msg.writable = ARES_FALSE;
++  msg.owns_fd  = ARES_TRUE;
++
++  if (!ares_sock_state_queue(channel, &msg)) {
++    return ARES_FALSE; /* LCOV_EXCL_LINE: OutOfMemory */
+   }
+ 
+   conn->state_flags &= ~((unsigned int)ARES_CONN_STATE_CBFLAGS);
++
++  return ARES_TRUE;
++}
++
++void ares_conn_sock_state_cb_update(ares_conn_t            *conn,
++                                    ares_conn_state_flags_t flags)
++{
++  ares_channel_t       *channel = conn->server->channel;
++  ares_sock_state_msg_t msg;
++  ares_bool_t           changed = ARES_FALSE;
++
++  if ((conn->state_flags & ARES_CONN_STATE_CBFLAGS) != flags) {
++    changed = ARES_TRUE;
++  }
++
++  msg.fd       = conn->fd;
++  msg.readable = flags & ARES_CONN_STATE_READ ? ARES_TRUE : ARES_FALSE;
++  msg.writable = flags & ARES_CONN_STATE_WRITE ? ARES_TRUE : ARES_FALSE;
++  msg.owns_fd  = ARES_FALSE; /* the connection still owns it */
++
++  if (!changed || channel->sock_state_cb == NULL) {
++    conn->state_flags &= ~((unsigned int)ARES_CONN_STATE_CBFLAGS);
++    conn->state_flags |= flags;
++    return;
++  }
++
++  /* Queue rather than dispatch.  This runs in the middle of opening, writing
++   * to or closing a connection, and every caller keeps using that connection
++   * afterwards.  The callback is application code that may reentrantly call
++   * ares_cancel() or ares_set_servers_csv(), either of which frees the
++   * connection -- the first through the idle-connection sweep, the second by
++   * destroying the server that owns it.  Deliver once no frame still holds
++   * it.
++   *
++   * Only the descriptor and the state are captured, never the connection, and
++   * insertion order is preserved so the application observes the same
++   * sequence it would have seen inline. */
++  if (!ares_sock_state_queue(channel, &msg)) {
++    return; /* LCOV_EXCL_LINE: OutOfMemory */
++  }
++
++  /* Recorded as reported only now: on either failure above the connection
++   * stays eligible to notify again, rather than remembering a state the
++   * application was never told about. */
++  conn->state_flags &= ~((unsigned int)ARES_CONN_STATE_CBFLAGS);
+   conn->state_flags |= flags;
+ }
+ 
+@@ -59,9 +252,23 @@ ares_conn_err_t ares_conn_read(ares_conn_t *conn, void *data, size_t len,
+                            (struct sockaddr *)&sa_storage, &salen, read_bytes);
+ 
+ #ifdef HAVE_RECVFROM
++    /* The socket is connect()ed, so the kernel normally drops datagrams from
++     * any other address or port already.  Application-provided socket
++     * functions might not filter on connect, so also check here that the
++     * datagram came from the server's address and UDP port.  RFC 5452
++     * section 9.1 only requires the address to match; matching the port too
++     * keeps one server from answering for another on the same address.
++     * Socket functions that fill in the source address but leave the port 0
++     * predate the port check, so for those only the address is checked.  A
++     * sender cannot use this to skip the port check: the default socket
++     * functions connect() the socket, so the kernel drops a datagram from
++     * port 0, and an unprivileged process on the server's host cannot send
++     * from port 0, while an off-path attacker able to forge port 0 can forge
++     * the server's real port just as easily. */
+     if (err == ARES_CONN_ERR_SUCCESS &&
+-        !ares_sockaddr_addr_eq((struct sockaddr *)&sa_storage,
+-                               &conn->server->addr)) {
++        !ares_sockaddr_addr_port_eq((struct sockaddr *)&sa_storage,
++                                    &conn->server->addr,
++                                    conn->server->udp_port)) {
+       err = ARES_CONN_ERR_WOULDBLOCK;
+     }
+ #endif
+@@ -69,6 +276,15 @@ ares_conn_err_t ares_conn_read(ares_conn_t *conn, void *data, size_t len,
+     err = ares_socket_recv(channel, conn->fd, ARES_TRUE, data, len, read_bytes);
+   }
+ 
++  /* The receive function is application code and may have reconfigured the
++   * servers, tearing this connection down.  Nothing read from it can be
++   * matched any more -- its queries have moved to the new configuration --
++   * and its descriptor is gone, so it must not be read again. */
++  if (conn->flags & ARES_CONN_FLAG_DEAD) {
++    *read_bytes = 0;
++    return ARES_CONN_ERR_CONNCLOSED;
++  }
++
+   /* Toggle connected state if needed */
+   if (err == ARES_CONN_ERR_SUCCESS) {
+     conn->state_flags |= ARES_CONN_STATE_CONNECTED;
+@@ -215,6 +431,19 @@ ares_conn_err_t ares_conn_write(ares_conn_t *conn, const void *data, size_t len,
+   }
+ 
+ done:
++  /* The send function -- from ares_set_socket_functions_ex() or the legacy
++   * ares_set_socket_functions() -- and on the first TCP Fast Open write the
++   * getsockname function, are application code and may have reconfigured the
++   * servers, tearing this connection down.  Whatever the write returned,
++   * nothing written here can be answered any more, and the descriptor has
++   * already been closed or handed to the close notification, so there is no
++   * socket state left to report.  Say so, so every caller treats it as the
++   * connection failure it is. */
++  if (conn->flags & ARES_CONN_FLAG_DEAD) {
++    *written = 0;
++    return ARES_CONN_ERR_CONNCLOSED;
++  }
++
+   if (err == ARES_CONN_ERR_SUCCESS && len == *written) {
+     /* Wrote all data, make sure we're not listening for write events unless
+      * using TFO, in which case we'll need a write event to know when
+@@ -435,12 +664,29 @@ ares_status_t ares_open_connection(ares_conn_t   **conn_out,
+     conn->flags |= ARES_CONN_FLAG_TFO_INITIAL;
+   }
+ 
++  /* The socket-configure and socket-create callbacks above are application
++   * code, and either may reconfigure the servers -- which destroys the ones
++   * the new configuration omits, including possibly this one.  Everything
++   * below dereferences it, starting with conn->server in
++   * ares_conn_set_self_ip(). */
++  if (!ares_server_in_channel(channel, server)) {
++    status = ARES_ECONNREFUSED;
++    goto done;
++  }
++
+   /* Need to store our own ip for DNS cookie support */
+   status = ares_conn_set_self_ip(conn, ARES_TRUE);
+   if (status != ARES_SUCCESS) {
+     goto done; /* LCOV_EXCL_LINE: UntestablePath */
+   }
+ 
++  /* The getsockname function is application code as well, and may have
++   * reconfigured the servers the same way. */
++  if (!ares_server_in_channel(channel, server)) {
++    status = ARES_ECONNREFUSED;
++    goto done;
++  }
++
+   /* TCP connections are thrown to the end as we don't spawn multiple TCP
+    * connections. UDP connections are put on front where the newest connection
+    * can be quickly pulled */
+diff --git a/deps/cares/src/lib/ares_conn.h b/deps/cares/src/lib/ares_conn.h
+index c332de14b1..fc177b84f6 100644
+--- a/deps/cares/src/lib/ares_conn.h
++++ b/deps/cares/src/lib/ares_conn.h
+@@ -49,7 +49,14 @@ typedef enum {
+    *  it).  Its in-flight queries continue to drain and it is cleaned up once
+    *  idle.  This is a per-connection signal so that a transient failure does
+    *  not evict otherwise-healthy connections to the same server. */
+-  ARES_CONN_FLAG_NONEW = 1 << 3
++  ARES_CONN_FLAG_NONEW = 1 << 3,
++  /*! Connection has been torn down: unlinked from every lookup structure, its
++   *  descriptor closed or handed to a pending notification, and its queries
++   *  requeued.  It survives only so that a caller further up the stack which
++   *  captured it before the teardown can still read it; see
++   *  ares_deferred_reclaim().  Teardown is idempotent -- a second
++   *  ares_close_connection() on a dead connection does nothing. */
++  ARES_CONN_FLAG_DEAD = 1 << 4
+ } ares_conn_flags_t;
+ 
+ typedef enum {
+@@ -84,6 +91,10 @@ struct ares_conn {
+ 
+   /* list of outstanding queries to this connection */
+   ares_llist_t           *queries_to_conn;
++
++  /*! Next connection awaiting reclamation.  Set only while this connection is
++   *  on channel->pending_conns; see ares_deferred_reclaim(). */
++  ares_conn_t            *next_pending;
+ };
+ 
+ /*! Various buckets for grouping history */
+@@ -168,6 +179,10 @@ struct ares_server {
+ 
+   /* Link back to owning channel */
+   ares_channel_t       *channel;
++
++  /*! Next server awaiting reclamation.  Set only while this server is on
++   *  channel->pending_servers; see ares_deferred_reclaim(). */
++  ares_server_t        *next_pending;
+ };
+ 
+ void ares_close_connection(ares_conn_t *conn, ares_status_t requeue_status);
+@@ -185,8 +200,24 @@ ares_status_t   ares_conn_flush(ares_conn_t *conn);
+ ares_conn_err_t ares_conn_read(ares_conn_t *conn, void *data, size_t len,
+                                size_t *read_bytes);
+ ares_conn_t *ares_conn_from_fd(const ares_channel_t *channel, ares_socket_t fd);
+-void         ares_conn_sock_state_cb_update(ares_conn_t            *conn,
+-                                            ares_conn_state_flags_t flags);
++
++/*! Queue the "stop watching this descriptor" notification for a connection
++ *  being torn down, handing the descriptor to that queued message.
++ *
++ *  The application must be told to stop watching a descriptor while it is
++ *  still open -- close first and the number can be handed to something else,
++ *  including by application code running from a deferred query callback,
++ *  before the notification naming it is delivered.
++ *
++ *  \param[in] conn  Connection being closed.
++ *  \return ARES_TRUE if the queued notification took the descriptor, in which
++ *          case the caller must not close it; ARES_FALSE if no notification is
++ *          due, and the caller closes the descriptor itself.
++ */
++ares_bool_t     ares_conn_sock_state_cb_close(ares_conn_t *conn);
++
++void            ares_conn_sock_state_cb_update(ares_conn_t            *conn,
++                                               ares_conn_state_flags_t flags);
+ ares_conn_err_t ares_socket_recv(ares_channel_t *channel, ares_socket_t s,
+                                  ares_bool_t is_tcp, void *data,
+                                  size_t data_len, size_t *read_bytes);
+diff --git a/deps/cares/src/lib/ares_destroy.c b/deps/cares/src/lib/ares_destroy.c
+index 1e5706e0e0..e0534c800d 100644
+--- a/deps/cares/src/lib/ares_destroy.c
++++ b/deps/cares/src/lib/ares_destroy.c
+@@ -69,17 +69,31 @@ void ares_destroy(ares_channel_t *channel)
+    * callbacks need to hold a channel lock. */
+   ares_channel_lock(channel);
+ 
+-  /* Destroy all queries */
+-  node = ares_llist_node_first(channel->all_queries);
+-  while (node != NULL) {
+-    ares_llist_node_t *next  = ares_llist_node_next(node);
+-    ares_query_t      *query = ares_llist_node_claim(node);
+-
++  /* Destroy all queries.
++   *
++   * The queries are detached before their callbacks run.  Claiming the node
++   * only unlinks a query from all_queries; it stays in queries_by_qid, on
++   * conn->queries_to_conn and in queries_by_timeout.  A reentrant teardown
++   * from inside the callback -- ares_set_servers_csv(), or a new query
++   * hitting a connection error -- would otherwise still find the query, end
++   * it a second time (invoking the application callback twice for one
++   * lookup) and free it, and the ares_free_query() below would double-free.
++   *
++   * The loop re-reads the first node each iteration rather than caching the
++   * next one, since a callback can cause other queries in this same list to
++   * be ended and their nodes destroyed.  No list swap is needed: sys_up is
++   * already cleared above, so ares_send_nolock() refuses new queries and
++   * nothing can be added while we drain. */
++  while ((node = ares_llist_node_first(channel->all_queries)) != NULL) {
++    ares_query_t *query = ares_llist_node_claim(node);
++
++    /* Must come first: node_claim() already destroyed this node, so
++     * ares_detach_query() would otherwise destroy it a second time. */
+     query->node_all_queries = NULL;
++    ares_detach_query(query);
++
+     query->callback(query->arg, ARES_EDESTRUCTION, 0, NULL);
+     ares_free_query(query);
+-
+-    node = next;
+   }
+ 
+   ares_queue_notify_empty(channel);
+@@ -93,7 +107,28 @@ void ares_destroy(ares_channel_t *channel)
+   assert(ares_slist_len(channel->queries_by_timeout) == 0);
+ #endif
+ 
++  /* Tearing down the servers closes every remaining connection.  Applications
++   * rely on being told about those closures so they can drop the descriptors
++   * from their own event loop, so the notifications are still delivered here
++   * rather than discarded -- just after the teardown instead of during it. */
++  ares_deferred_cb_enter(channel);
+   ares_destroy_servers_state(channel);
++  ares_deferred_cb_leave(channel);
++
++  /* The leave above delivered and destroyed both queues and reclaimed
++   * everything the teardown unlinked, so these are normally no-ops.  They are
++   * not redundant: if the first insert into a freshly created queue fails,
++   * the array is left allocated and empty, the flush loop never runs because
++   * both queues are empty, and nothing else would ever free it. */
++  ares_array_destroy(channel->sock_state_queue);
++  channel->sock_state_queue = NULL;
++  ares_array_destroy(channel->server_state_queue);
++  channel->server_state_queue = NULL;
++
++#ifndef NDEBUG
++  assert(channel->pending_servers == NULL);
++  assert(channel->pending_conns == NULL);
++#endif
+ 
+ #ifndef NDEBUG
+   assert(ares_htable_asvp_num_keys(channel->connnode_by_socket) == 0);
+@@ -134,17 +169,47 @@ void ares_destroy(ares_channel_t *channel)
+   ares_free(channel);
+ }
+ 
+-void ares_destroy_server(ares_server_t *server)
++/*! Release a server's memory.  Split from ares_destroy_server() for the same
++ *  reason ares_conn_reap() is split out: a caller further up the stack may
++ *  still hold this pointer. */
++void ares_server_reap(ares_server_t *server)
+ {
+   if (server == NULL) {
+     return; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
+-  ares_close_sockets(server);
+   ares_llist_destroy(server->connections);
+   ares_free(server);
+ }
+ 
++void ares_destroy_server(ares_server_t *server)
++{
++  ares_channel_t *channel;
++
++  if (server == NULL) {
++    return; /* LCOV_EXCL_LINE: DefensiveCoding */
++  }
++
++  channel = server->channel;
++
++  /* Closes and unlinks every connection; each is deferred or reaped by
++   * ares_close_connection() on the same rule applied below. */
++  ares_close_sockets(server);
++
++  /* The caller has already unlinked this server from channel->servers, so it
++   * can no longer be found -- ares_server_in_channel() and
++   * ares_slist_node_find() both report it gone, which is what callers check
++   * before acting on one.  But a library call in progress may still be
++   * holding the pointer, so keep it readable until that call unwinds. */
++  if (channel != NULL && channel->deferred_cb_depth > 0) {
++    server->next_pending     = channel->pending_servers;
++    channel->pending_servers = server;
++    return;
++  }
++
++  ares_server_reap(server);
++}
++
+ void ares_destroy_servers_state(ares_channel_t *channel)
+ {
+   ares_slist_node_t *node;
+diff --git a/deps/cares/src/lib/ares_getaddrinfo.c b/deps/cares/src/lib/ares_getaddrinfo.c
+index 6d9e21af4b..5d9ddb311e 100644
+--- a/deps/cares/src/lib/ares_getaddrinfo.c
++++ b/deps/cares/src/lib/ares_getaddrinfo.c
+@@ -762,7 +762,12 @@ void ares_getaddrinfo(ares_channel_t *channel, const char *name,
+     return;
+   }
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+   ares_getaddrinfo_int(channel, name, service, hints, callback, arg);
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ }
+ 
+diff --git a/deps/cares/src/lib/ares_gethostbyaddr.c b/deps/cares/src/lib/ares_gethostbyaddr.c
+index 69c509ab11..b314359331 100644
+--- a/deps/cares/src/lib/ares_gethostbyaddr.c
++++ b/deps/cares/src/lib/ares_gethostbyaddr.c
+@@ -112,7 +112,12 @@ void ares_gethostbyaddr(ares_channel_t *channel, const void *addr, int addrlen,
+     return;
+   }
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+   ares_gethostbyaddr_nolock(channel, addr, addrlen, family, callback, arg);
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ }
+ 
+diff --git a/deps/cares/src/lib/ares_getnameinfo.c b/deps/cares/src/lib/ares_getnameinfo.c
+index 0159354530..a477eb8dba 100644
+--- a/deps/cares/src/lib/ares_getnameinfo.c
++++ b/deps/cares/src/lib/ares_getnameinfo.c
+@@ -194,7 +194,12 @@ void ares_getnameinfo(ares_channel_t *channel, const struct sockaddr *sa,
+   }
+ 
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+   ares_getnameinfo_int(channel, sa, salen, flags_int, callback, arg);
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ }
+ 
+@@ -223,9 +228,12 @@ static void nameinfo_callback(void *arg, int status, int timeouts,
+      */
+ #ifdef HAVE_GETHOSTNAME
+     if (niquery->flags & ARES_NI_NOFQDN) {
+-      char        buf[255];
++      char        buf[255] = "";
+       const char *domain;
+-      gethostname(buf, 255);
++      if (gethostname(buf, (GETHOSTNAME_TYPE_ARG2)sizeof(buf)) != 0) {
++        buf[0] = '\0';
++      }
++      buf[sizeof(buf) - 1] = '\0';
+       if ((domain = strchr(buf, '.')) != NULL) {
+         char *end = ares_striendstr(host->h_name, domain);
+         if (end) {
+diff --git a/deps/cares/src/lib/ares_inet_net_pton.h b/deps/cares/src/lib/ares_inet_net_pton.h
+index e3ed83a3cb..e1a6f2d71e 100644
+--- a/deps/cares/src/lib/ares_inet_net_pton.h
++++ b/deps/cares/src/lib/ares_inet_net_pton.h
+@@ -26,6 +26,34 @@
+ #ifndef HEADER_CARES_INET_NET_PTON_H
+ #define HEADER_CARES_INET_NET_PTON_H
+ 
++/*! Parse a network (an address with an optional "/bits" prefix length) from
++ *  its text form.  This is not an address parser: for an address use
++ *  ares_inet_pton(), which rejects a prefix length and always writes the
++ *  whole address.
++ *
++ *  How it differs from ares_inet_pton():
++ *   - A "/bits" prefix length is accepted (0-32 for IPv4, 0-128 for IPv6).
++ *   - The return value is the prefix length, not 1.  Without "/bits", IPv6
++ *     returns 128 and IPv4 infers it from the address class, widened to
++ *     cover every octet given ("10" is 8, "130.155" is 16, "1.2.3.4" is 32,
++ *     and a lone "224" is 4).  0 is a valid result ("::1/0").
++ *   - What is written to dst differs by family.  On success all size bytes
++ *     are zeroed first.  IPv4 then writes every octet given, including bits
++ *     beyond the prefix ("1.2.3.4/8" writes 1.2.3.4).  IPv6 writes only the
++ *     (bits+7)/8 bytes covering the prefix ("2001:db8::1/64" writes
++ *     2001:db8::).
++ *
++ *  \param[in]  af    AF_INET or AF_INET6.
++ *  \param[in]  src   NUL-terminated network in text form.
++ *  \param[out] dst   Buffer to receive the network, in network byte order.
++ *  \param[in]  size  Size of dst in bytes.
++ *  \return Prefix length in bits on success.  -1 on failure, with SOCKERRNO
++ *          set to ENOENT if src is not a valid network, or EMSGSIZE if it
++ *          does not fit in size bytes or (IPv6) src is too long to be a
++ *          network.  On Windows these are the WSA equivalents.  An
++ *          unsupported af returns -1 without setting SOCKERRNO.  On failure
++ *          dst may be partially written.
++ */
+ int ares_inet_net_pton(int af, const char *src, void *dst, size_t size);
+ 
+ #endif /* HEADER_CARES_INET_NET_PTON_H */
+diff --git a/deps/cares/src/lib/ares_init.c b/deps/cares/src/lib/ares_init.c
+index dc3c1e4f53..85b2e13050 100644
+--- a/deps/cares/src/lib/ares_init.c
++++ b/deps/cares/src/lib/ares_init.c
+@@ -194,17 +194,21 @@ static ares_status_t init_by_defaults(ares_channel_t *channel)
+     size_t len        = 256;
+     channel->ndomains = 0; /* default to none */
+ 
+-    hostname = ares_malloc(len);
++    hostname = ares_malloc_zero(len);
+     if (!hostname) {
+       rc = ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+       goto error;       /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+ 
++    /* POSIX leaves it unspecified whether gethostname() NUL terminates when the
++     * host name doesn't fit, so force the last byte to a terminator afterwards.
++     */
+     if (gethostname(hostname, (GETHOSTNAME_TYPE_ARG2)len) != 0) {
+       /* Lets not treat a gethostname failure as critical, since we
+        * are ok if gethostname doesn't even exist */
+       *hostname = '\0';
+     }
++    hostname[len - 1] = '\0';
+ 
+     dot = strchr(hostname, '.');
+     if (dot) {
+@@ -479,7 +483,8 @@ int ares_dup(ares_channel_t **dest, const ares_channel_t *src)
+   *dest = NULL; /* in case of failure return NULL explicitly */
+ 
+   /* First get the options supported by the old ares_save_options() function,
+-     which is most of them */
++   * which is most of them.  ares_save_options() takes the src channel lock
++   * itself.  No lock is held across ares_init_options(). */
+   rc = (ares_status_t)ares_save_options(src, &opts, &optmask);
+   if (rc != ARES_SUCCESS) {
+     ares_destroy_options(&opts);
+@@ -504,15 +509,24 @@ int ares_dup(ares_channel_t **dest, const ares_channel_t *src)
+   (*dest)->sock_config_cb               = src->sock_config_cb;
+   (*dest)->sock_config_cb_data          = src->sock_config_cb_data;
+   memcpy(&(*dest)->sock_funcs, &(src->sock_funcs), sizeof((*dest)->sock_funcs));
+-  (*dest)->sock_func_cb_data            = src->sock_func_cb_data;
+-  (*dest)->legacy_sock_funcs            = src->legacy_sock_funcs;
+-  (*dest)->legacy_sock_funcs_cb_data    = src->legacy_sock_funcs_cb_data;
+-  (*dest)->server_state_cb              = src->server_state_cb;
+-  (*dest)->server_state_cb_data         = src->server_state_cb_data;
+-  (*dest)->notify_pending_write_cb      = src->notify_pending_write_cb;
+-  (*dest)->notify_pending_write_cb_data = src->notify_pending_write_cb_data;
+-  (*dest)->query_enqueue_cb             = src->query_enqueue_cb;
+-  (*dest)->query_enqueue_cb_data        = src->query_enqueue_cb_data;
++  (*dest)->sock_func_cb_data = src->sock_func_cb_data;
++  /* Socket callbacks given the channel itself as user data (as the
++   * ares_set_socket_functions() wrappers are) must get the new channel */
++  if (src->sock_func_cb_data == src) {
++    (*dest)->sock_func_cb_data = *dest;
++  }
++  (*dest)->legacy_sock_funcs         = src->legacy_sock_funcs;
++  (*dest)->legacy_sock_funcs_cb_data = src->legacy_sock_funcs_cb_data;
++  (*dest)->server_state_cb           = src->server_state_cb;
++  (*dest)->server_state_cb_data      = src->server_state_cb_data;
++  /* With an event thread these callbacks belong to the source's event
++   * thread; the new channel already has its own */
++  if (!(src->optmask & ARES_OPT_EVENT_THREAD)) {
++    (*dest)->notify_pending_write_cb      = src->notify_pending_write_cb;
++    (*dest)->notify_pending_write_cb_data = src->notify_pending_write_cb_data;
++    (*dest)->query_enqueue_cb             = src->query_enqueue_cb;
++    (*dest)->query_enqueue_cb_data        = src->query_enqueue_cb_data;
++  }
+ 
+   ares_strcpy((*dest)->local_dev_name, src->local_dev_name,
+               sizeof((*dest)->local_dev_name));
+diff --git a/deps/cares/src/lib/ares_library_init.c b/deps/cares/src/lib/ares_library_init.c
+index 10c88de009..17805d4dd0 100644
+--- a/deps/cares/src/lib/ares_library_init.c
++++ b/deps/cares/src/lib/ares_library_init.c
+@@ -36,7 +36,6 @@
+ /* library-private global vars with source visibility restricted to this file */
+ 
+ static unsigned int ares_initialized;
+-static int          ares_init_flags;
+ 
+ /* library-private global vars with visibility across the whole library */
+ 
+@@ -135,8 +134,7 @@ int ares_library_init(int flags)
+   ares_initialized++;
+ 
+   /* NOTE: ARES_LIB_INIT_WIN32 flag no longer used */
+-
+-  ares_init_flags = flags;
++  (void)flags;
+ 
+   return ARES_SUCCESS;
+ }
+@@ -173,10 +171,9 @@ void ares_library_cleanup(void)
+   ares_library_cleanup_android();
+ #endif
+ 
+-  ares_init_flags = ARES_LIB_INIT_NONE;
+-  __ares_malloc   = default_malloc;
+-  __ares_realloc  = default_realloc;
+-  __ares_free     = default_free;
++  __ares_malloc  = default_malloc;
++  __ares_realloc = default_realloc;
++  __ares_free    = default_free;
+ }
+ 
+ int ares_library_initialized(void)
+diff --git a/deps/cares/src/lib/ares_options.c b/deps/cares/src/lib/ares_options.c
+index 3082f33245..5ea35b732e 100644
+--- a/deps/cares/src/lib/ares_options.c
++++ b/deps/cares/src/lib/ares_options.c
+@@ -55,8 +55,8 @@ static struct in_addr *ares_save_opt_servers(const ares_channel_t *channel,
+                                              int                  *nservers)
+ {
+   ares_slist_node_t *snode;
+-  struct in_addr    *out =
+-    ares_malloc_zero(ares_slist_len(channel->servers) * sizeof(*out));
++  size_t             cnt = ares_slist_len(channel->servers);
++  struct in_addr    *out = ares_malloc_zero_array(cnt, sizeof(*out));
+ 
+   *nservers = 0;
+ 
+@@ -64,7 +64,11 @@ static struct in_addr *ares_save_opt_servers(const ares_channel_t *channel,
+     return NULL;
+   }
+ 
+-  for (snode = ares_slist_node_first(channel->servers); snode != NULL;
++  /* Never write more entries than were allocated.  The caller holds the
++   * channel lock so the server list cannot change underneath us; this is
++   * purely defensive. */
++  for (snode = ares_slist_node_first(channel->servers);
++       snode != NULL && (size_t)*nservers < cnt;
+        snode = ares_slist_node_next(snode)) {
+     const ares_server_t *server = ares_slist_node_val(snode);
+ 
+@@ -79,9 +83,11 @@ static struct in_addr *ares_save_opt_servers(const ares_channel_t *channel,
+   return out;
+ }
+ 
+-/* Save options from initialized channel */
+-int ares_save_options(const ares_channel_t *channel,
+-                      struct ares_options *options, int *optmask)
++/* Save options from initialized channel.  Caller must hold the channel lock
++ * (if channel is not NULL). */
++static ares_status_t ares_save_options_nolock(const ares_channel_t *channel,
++                                              struct ares_options  *options,
++                                              int                  *optmask)
+ {
+   size_t i;
+ 
+@@ -150,7 +156,8 @@ int ares_save_options(const ares_channel_t *channel,
+   if (channel->optmask & ARES_OPT_DOMAINS) {
+     options->domains = NULL;
+     if (channel->ndomains) {
+-      options->domains = ares_malloc(channel->ndomains * sizeof(char *));
++      options->domains =
++        ares_malloc_zero_array(channel->ndomains, sizeof(char *));
+       if (!options->domains) {
+         return ARES_ENOMEM;
+       }
+@@ -176,7 +183,8 @@ int ares_save_options(const ares_channel_t *channel,
+   if (channel->optmask & ARES_OPT_SORTLIST) {
+     options->sortlist = NULL;
+     if (channel->nsort) {
+-      options->sortlist = ares_malloc(channel->nsort * sizeof(struct apattern));
++      options->sortlist =
++        ares_malloc_zero_array(channel->nsort, sizeof(*options->sortlist));
+       if (!options->sortlist) {
+         return ARES_ENOMEM;
+       }
+@@ -238,6 +246,27 @@ int ares_save_options(const ares_channel_t *channel,
+   return ARES_SUCCESS;
+ }
+ 
++int ares_save_options(const ares_channel_t *channel,
++                      struct ares_options *options, int *optmask)
++{
++  ares_status_t status;
++
++  if (channel == NULL) {
++    /* Preserve historic behavior: initialize the pointers so
++     * ares_destroy_options() is safe, then return ARES_ENODATA */
++    return (int)ares_save_options_nolock(NULL, options, optmask);
++  }
++
++  /* The configuration may be modified concurrently by other threads (e.g.
++   * ares_set_servers_csv()), so it must only be read with the channel lock
++   * held. */
++  ares_channel_lock(channel);
++  status = ares_save_options_nolock(channel, options, optmask);
++  ares_channel_unlock(channel);
++
++  return (int)status;
++}
++
+ static ares_status_t ares_init_options_servers(ares_channel_t       *channel,
+                                                const struct in_addr *servers,
+                                                size_t                nservers)
+@@ -462,8 +491,7 @@ ares_status_t ares_init_by_options(ares_channel_t            *channel,
+     /* qcache_max_ttl is unsigned unlike the others */
+     channel->qcache_max_ttl = options->qcache_max_ttl;
+   } else {
+-    optmask                 |= ARES_OPT_QUERY_CACHE;
+-    channel->qcache_max_ttl  = 3600;
++    channel->qcache_max_ttl = 3600;
+   }
+ 
+   /* Initialize the ipv4 servers if provided */
+diff --git a/deps/cares/src/lib/ares_parse_into_addrinfo.c b/deps/cares/src/lib/ares_parse_into_addrinfo.c
+index 2108f9b861..fb198bdaa0 100644
+--- a/deps/cares/src/lib/ares_parse_into_addrinfo.c
++++ b/deps/cares/src/lib/ares_parse_into_addrinfo.c
+@@ -108,7 +108,7 @@ ares_status_t ares_parse_into_addrinfo(const ares_dns_record_t *dnsrec,
+         status = ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+         goto done;            /* LCOV_EXCL_LINE: OutOfMemory */
+       }
+-      cname->ttl   = (int)ares_dns_rr_get_ttl(rr);
++      cname->ttl   = ares_dns_ttl_as_int(ares_dns_rr_get_ttl(rr));
+       cname->alias = ares_strdup(ares_dns_rr_get_name(rr));
+       if (cname->alias == NULL) {
+         status = ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+diff --git a/deps/cares/src/lib/ares_private.h b/deps/cares/src/lib/ares_private.h
+index 04d4576ed2..dd06d303b8 100644
+--- a/deps/cares/src/lib/ares_private.h
++++ b/deps/cares/src/lib/ares_private.h
+@@ -147,9 +147,15 @@ typedef struct ares_query ares_query_t;
+ struct ares_query {
+   /* Query ID from qbuf, for faster lookup, and current timeout */
+   unsigned short       qid; /* host byte order */
+-  ares_timeval_t       ts;  /*!< Timestamp query was sent */
++  /*! Distinguishes this query from any later one handed the same qid.
++   *  Query ids are 16-bit and recycled; this counter is not. */
++  size_t               serial;
++  ares_timeval_t       ts; /*!< Timestamp query was sent */
+   ares_timeval_t       timeout;
+   ares_channel_t      *channel;
++  /*! Query cache key, derived from the caller's request before the send path
++   *  can mutate query->query.  NULL when the cache is disabled. */
++  char                *qcache_key;
+ 
+   /*
+    * Node object for each list entry the query belongs to in order to
+@@ -227,6 +233,9 @@ struct ares_channeldata {
+   /* Server addresses and communications state. Sorted by least consecutive
+    * failures, followed by the configuration order if failures are equal. */
+   ares_slist_t        *servers;
++  /*! Bumped by each ares_servers_update().  Lets the stale-server removal loop
++   *  tell that a nested reconfiguration reconciled the list underneath it. */
++  size_t               servers_generation;
+ 
+   /* random state to use when generating new ids and generating retry penalties
+    */
+@@ -237,6 +246,10 @@ struct ares_channeldata {
+   /* Queries bucketed by qid, for quickly dispatching DNS responses: */
+   ares_htable_szvp_t  *queries_by_qid;
+ 
++  /*! Monotonic source for ares_query_t.serial.  Never reused for the life of
++   *  the channel, so a recycled query id cannot impersonate an older query. */
++  size_t               query_serial;
++
+   /* Queries bucketed by timeout, for quickly handling timeouts: */
+   ares_slist_t        *queries_by_timeout;
+ 
+@@ -248,6 +261,29 @@ struct ares_channeldata {
+ 
+   ares_sock_state_cb   sock_state_cb;
+   void                *sock_state_cb_data;
++  /*! Socket-state notifications queued during processing, delivered once the
++   *  library is no longer holding a connection a reentrant call could free.
++   *  Insertion order is preserved, so an application observes the same
++   *  sequence of state changes it would have seen inline. */
++  ares_array_t        *sock_state_queue;
++  /*! Depth of nested library entry points that may produce a deferred
++   *  application notification.  Queues are delivered as this returns to
++   *  zero.  Shared by every deferred callback kind rather than one counter
++   *  per kind, so the delivery rule exists in exactly one place. */
++  size_t               deferred_cb_depth;
++
++  /*! Servers and connections that have been unlinked from every lookup
++   *  structure but not yet freed, because a library call was in progress and
++   *  may still hold a pointer to them.  Drained by the same flush that
++   *  delivers deferred notifications, once no frame can still be holding one.
++   *
++   *  This is what makes a stale ares_server_t or ares_conn_t readable rather
++   *  than freed for the remainder of the call that captured it.  Callers
++   *  still revalidate before *acting* on one -- ares_server_in_channel() and
++   *  friends -- but a missed check is now "used a server that was removed"
++   *  rather than a use-after-free. */
++  ares_server_t       *pending_servers;
++  ares_conn_t         *pending_conns;
+ 
+   ares_sock_create_callback           sock_create_cb;
+   void                               *sock_create_cb_data;
+@@ -295,6 +331,10 @@ struct ares_channeldata {
+   /* Callback triggered when a server has a successful or failed response */
+   ares_server_state_callback          server_state_cb;
+   void                               *server_state_cb_data;
++  /*! Server-state notifications queued during processing, dispatched once the
++   *  library is no longer holding pointers a reentrant callback could free.
++   *  See ares_deferred_cb_leave(). */
++  ares_array_t                       *server_state_queue;
+ 
+   /* TRUE if a reinit is pending.  Reinit spawns a thread to read the system
+    * configuration and then apply the configuration since configuration
+@@ -308,6 +348,11 @@ struct ares_channeldata {
+    * system config changes might get triggered and we need a flag to make
+    * sure we don't take action. */
+   ares_bool_t                         sys_up;
++
++  /*! Set while ares_send_nolock() is running the refusal notification for a
++   *  channel being destroyed.  Bounds the recursion at one frame when the
++   *  application's callback responds by starting another lookup. */
++  ares_bool_t                         in_shutdown_refusal;
+ };
+ 
+ /* Does the domain end in ".onion" or ".onion."? Case-insensitive. */
+@@ -351,6 +396,16 @@ void         *ares_dnsrec_convert_arg(ares_callback callback, void *arg);
+ void ares_dnsrec_convert_cb(void *arg, ares_status_t status, size_t timeouts,
+                             const ares_dns_record_t *dnsrec);
+ 
++/*! Unlink a query from every list and table that tracks it.
++ *
++ *  Must be called before running application code that could reach the query
++ *  again, so a reentrant teardown cannot find it and end it a second time.
++ *
++ *  \param[in] query  Query to detach.  Safe to call more than once on the
++ *                    same query.
++ */
++void ares_detach_query(ares_query_t *query);
++
+ void ares_free_query(ares_query_t *query);
+ 
+ unsigned short ares_generate_new_id(ares_rand_state *state);
+@@ -390,7 +445,6 @@ ares_status_t ares_sysconfig_set_options(ares_sysconfig_t *sysconfig,
+ 
+ ares_status_t ares_init_by_environment(ares_sysconfig_t *sysconfig);
+ 
+-
+ typedef ares_status_t (*ares_sysconfig_line_cb_t)(const ares_channel_t *channel,
+                                                   ares_sysconfig_t     *sysconfig,
+                                                   ares_buf_t           *line);
+@@ -589,6 +643,70 @@ ares_status_t ares_dns_name_write(ares_buf_t *buf, ares_llist_t **list,
+  */
+ void          ares_queue_notify_empty(ares_channel_t *channel);
+ 
++/*! Is this server still installed on the channel?
++ *
++ *  Application callbacks may reconfigure the servers, which destroys any that
++ *  the new configuration omits.  A raw ares_server_t captured before such a
++ *  callback must be revalidated before it is used again.
++ *
++ *  \param[in] channel  Initialized ares channel.
++ *  \param[in] server   Server pointer captured earlier.
++ *  \return ARES_TRUE if still present.
++ */
++ares_bool_t   ares_server_in_channel(const ares_channel_t *channel,
++                                     const ares_server_t  *server);
++
++/*! Free everything awaiting reclamation on the channel.
++ *
++ *  Called only from the deferred-callback flush, at the point where the
++ *  outermost library call is unwinding and no frame can still hold a pointer
++ *  to an unlinked server or connection.
++ *
++ *  \param[in] channel  Initialized ares channel.
++ */
++void          ares_deferred_reclaim(ares_channel_t *channel);
++
++/*! Free one connection's memory.  Only for the deferred-reclaim path and the
++ *  immediate path in ares_close_connection(). */
++void          ares_conn_reap(ares_conn_t *conn);
++
++/*! Free one server's memory.  Only for the deferred-reclaim path and the
++ *  immediate path in ares_destroy_server(). */
++void          ares_server_reap(ares_server_t *server);
++
++/*! Enter a region that may produce application notifications the library is
++ *  not in a position to deliver yet -- socket-state and server-state changes.
++ *  Nesting is counted; queued notifications are delivered by the outermost
++ *  leave.
++ *
++ *  The outermost region must be opened by the public entry point itself
++ *  (ares_send_dnsrec(), ares_query_dnsrec(), ares_search(), ares_getaddrinfo(),
++ *  ares_process_fds(), ares_set_servers_*(), ...), with the channel lock
++ *  held, around everything it does.  Internal helpers such as
++ *  ares_send_nolock() open nested regions of their own, but their callers
++ *  often keep using lookup state afterwards -- a host or search query, a
++ *  query id out-pointer -- that a callback reentering the library may end
++ *  and free.  If such a helper were the outermost region, its leave would
++ *  run the callbacks while that state is still in use.
++ *
++ *  \param[in] channel  Initialized ares channel.
++ */
++void          ares_deferred_cb_enter(ares_channel_t *channel);
++
++/*! Leave such a region.  The outermost leave delivers the queues, at which
++ *  point the library holds no connection a reentrant call could free.
++ *
++ *  \param[in] channel  Initialized ares channel.
++ */
++void          ares_deferred_cb_leave(ares_channel_t *channel);
++
++/*! Deliver every server-state notification the channel has queued.  Called
++ *  only from the shared deferred-callback flush.
++ *
++ *  \param[in] channel  Initialized ares channel.
++ */
++void          ares_server_state_dispatch(ares_channel_t *channel);
++
+ #define ARES_CONFIG_CHECK(x)                                              \
+   (x && x->lookups && ares_slist_len(x->servers) > 0 && x->timeout > 0 && \
+    x->tries > 0)
+@@ -603,14 +721,47 @@ ares_status_t ares_qcache_create(ares_rand_state *rand_state,
+                                  unsigned int     max_ttl,
+                                  ares_qcache_t  **cache_out);
+ void          ares_qcache_flush(ares_qcache_t *cache);
++/*! Derive the query cache key for a request.  Caller owns the result.
++ *
++ *  \param[in] dnsrec  Request to derive the key from.
++ *  \return allocated key, or NULL on failure.
++ */
++char         *ares_qcache_calc_key(const ares_dns_record_t *dnsrec);
++
++/*! Insert a response into the query cache.
++ *
++ *  \param[in] channel  Initialized channel object.
++ *  \param[in] now      Current timestamp.
++ *  \param[in] query    Query the response answers.  Its cache key, derived
++ *                      when the query was created, becomes the entry key; a
++ *                      NULL key means caching is switched off.
++ *  \param[in] dnsrec   Response to cache.  Duplicated internally; the caller
++ *                      retains ownership.
++ *  \return ARES_SUCCESS if cached, ARES_ENOTIMP if caching is off or the
++ *          response is not cacheable, otherwise another status.
++ */
+ ares_status_t ares_qcache_insert(ares_channel_t          *channel,
+                                  const ares_timeval_t    *now,
+                                  const ares_query_t      *query,
+                                  const ares_dns_record_t *dnsrec);
+-ares_status_t ares_qcache_fetch(ares_channel_t           *channel,
+-                                const ares_timeval_t     *now,
+-                                const ares_dns_record_t  *dnsrec,
+-                                const ares_dns_record_t **dnsrec_resp);
++/*! Fetch a cached answer for a request.
++ *
++ *  \param[in]  channel      Initialized channel object.
++ *  \param[in]  now          Current timestamp.
++ *  \param[in]  key          Cache key for the request, as produced by
++ *                           ares_qcache_calc_key().  Owned by the caller.
++ *  \param[out] dnsrec_resp  On ARES_SUCCESS, the cached answer, owned by the
++ *                           caller and destroyed with
++ *                           ares_dns_record_destroy().  Set to NULL on any
++ *                           other status, except ARES_EFORMERR, which is
++ *                           returned by the argument check before this is
++ *                           touched.
++ *  \return ARES_SUCCESS on a hit, ARES_ENOTFOUND on a miss, ARES_EFORMERR on
++ *          invalid arguments.
++ */
++ares_status_t ares_qcache_fetch(ares_channel_t       *channel,
++                                const ares_timeval_t *now, const char *key,
++                                ares_dns_record_t **dnsrec_resp);
+ 
+ void   ares_metrics_record(const ares_query_t *query, ares_server_t *server,
+                            ares_status_t status, const ares_dns_record_t *dnsrec);
+@@ -636,7 +787,6 @@ typedef struct ares_event_thread ares_event_thread_t;
+ void          ares_event_thread_destroy(ares_channel_t *channel);
+ ares_status_t ares_event_thread_init(ares_channel_t *channel);
+ 
+-
+ #ifdef _WIN32
+ #  define HOSTENT_ADDRTYPE_TYPE short
+ #  define HOSTENT_LENGTH_TYPE   short
+diff --git a/deps/cares/src/lib/ares_process.c b/deps/cares/src/lib/ares_process.c
+index b2316c4b33..06d0ca507c 100644
+--- a/deps/cares/src/lib/ares_process.c
++++ b/deps/cares/src/lib/ares_process.c
+@@ -69,7 +69,6 @@ static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
+                                          ares_query_t         *query,
+                                          const ares_timeval_t *now,
+                                          ares_array_t        **requeue);
+-static void          ares_detach_query(ares_query_t *query);
+ 
+ static void        ares_query_remove_from_conn(ares_query_t *query)
+ {
+@@ -81,14 +80,32 @@ static void        ares_query_remove_from_conn(ares_query_t *query)
+   query->conn                    = NULL;
+ }
+ 
++/*! A queued server-state notification.  Holds the formatted address rather
++ *  than the server, so it stays valid however the server list changes. */
++typedef struct {
++  char       *server_string;
++  ares_bool_t success;
++  int         flags;
++} ares_server_state_msg_t;
++
++static void ares_server_state_msg_free(void *arg)
++{
++  ares_server_state_msg_t *msg = arg;
++  if (msg == NULL) {
++    return; /* LCOV_EXCL_LINE: DefensiveCoding */
++  }
++  ares_free(msg->server_string);
++}
++
+ /* Invoke the server state callback after a success or failure */
+ static void invoke_server_state_cb(const ares_server_t *server,
+                                    ares_bool_t success, int flags)
+ {
+-  const ares_channel_t *channel = server->channel;
+-  ares_buf_t           *buf;
+-  ares_status_t         status;
+-  char                 *server_string;
++  ares_channel_t         *channel = server->channel;
++  ares_buf_t             *buf;
++  ares_status_t           status;
++  char                   *server_string;
++  ares_server_state_msg_t msg;
+ 
+   if (channel->server_state_cb == NULL) {
+     return;
+@@ -111,9 +128,57 @@ static void invoke_server_state_cb(const ares_server_t *server,
+     return; /* LCOV_EXCL_LINE: OutOfMemory */
+   }
+ 
+-  channel->server_state_cb(server_string, success, flags,
+-                           channel->server_state_cb_data);
+-  ares_free(server_string);
++  /* Queue rather than dispatch.  This runs in the middle of processing, and
++   * every caller keeps using its query / connection / server afterwards.  The
++   * callback is application code that may reentrantly call ares_cancel(),
++   * which frees those objects -- so dispatch once the library is no longer
++   * holding them.  Same philosophy as the deferred query-callback dispatch.
++   *
++   * Only the formatted address is captured, never the ares_server_t, so a
++   * queued entry cannot outlive anything it points at. */
++  if (channel->server_state_queue == NULL) {
++    channel->server_state_queue = ares_array_create(
++      sizeof(ares_server_state_msg_t), ares_server_state_msg_free);
++    if (channel->server_state_queue == NULL) {
++      /* LCOV_EXCL_START: OutOfMemory */
++      ares_free(server_string);
++      return;
++      /* LCOV_EXCL_STOP */
++    }
++  }
++
++  msg.server_string = server_string;
++  msg.success       = success;
++  msg.flags         = flags;
++
++  if (ares_array_insertdata_last(channel->server_state_queue, &msg) !=
++      ARES_SUCCESS) {
++    ares_free(server_string); /* LCOV_EXCL_LINE: OutOfMemory */
++  }
++}
++
++/*! Deliver every server-state notification the channel has queued.  Loops
++ *  rather than snapshotting: a callback is allowed to re-enter the library and
++ *  queue more, and those belong to this same delivery point. */
++void ares_server_state_dispatch(ares_channel_t *channel)
++{
++  while (ares_array_len(channel->server_state_queue) > 0) {
++    ares_server_state_msg_t msg;
++
++    if (ares_array_claim_at(&msg, sizeof(msg), channel->server_state_queue,
++                            0) != ARES_SUCCESS) {
++      break; /* LCOV_EXCL_LINE: DefensiveCoding */
++    }
++
++    if (channel->server_state_cb != NULL) {
++      channel->server_state_cb(msg.server_string, msg.success, msg.flags,
++                               channel->server_state_cb_data);
++    }
++    ares_free(msg.server_string);
++  }
++
++  ares_array_destroy(channel->server_state_queue);
++  channel->server_state_queue = NULL;
+ }
+ 
+ static void server_increment_failures(ares_server_t *server,
+@@ -124,7 +189,9 @@ static void server_increment_failures(ares_server_t *server,
+   ares_timeval_t        next_retry_time;
+ 
+   node = ares_slist_node_find(channel->servers, server);
+-  if (node == NULL) {
++  /* Matches by sort key, not identity, so a removed server can match the live
++   * one that replaced it at the same configuration index. */
++  if (node == NULL || ares_slist_node_val(node) != server) {
+     return; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
+@@ -155,7 +222,9 @@ static void server_set_good(ares_server_t *server, ares_bool_t used_tcp)
+   const ares_channel_t *channel = server->channel;
+ 
+   node = ares_slist_node_find(channel->servers, server);
+-  if (node == NULL) {
++  /* Matches by sort key, not identity, so a removed server can match the live
++   * one that replaced it at the same configuration index. */
++  if (node == NULL || ares_slist_node_val(node) != server) {
+     return; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
+@@ -204,6 +273,8 @@ static ares_status_t ares_process_fds_nolock(ares_channel_t         *channel,
+     return ARES_EFORMERR; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
++  ares_deferred_cb_enter(channel);
++
+   ares_tvnow(&now);
+ 
+   /* Process write events */
+@@ -244,6 +315,8 @@ static ares_status_t ares_process_fds_nolock(ares_channel_t         *channel,
+   }
+ 
+ done:
++  ares_deferred_cb_leave(channel);
++
+   if (status == ARES_ENOMEM) {
+     return ARES_ENOMEM;
+   }
+@@ -421,29 +494,53 @@ void ares_process_pending_write(ares_channel_t *channel)
+     return;
+   }
+ 
++  /* A failed flush closes the connection and fails its queries over, which
++   * notifies.  Deliver once we are done walking the servers, and keep
++   * anything unlinked meanwhile readable until then. */
++  ares_deferred_cb_enter(channel);
++
+   /* Set as untriggerd before calling into ares_conn_flush(), this is
+    * because its possible ares_conn_flush() might cause additional data to
+    * be enqueued if there is some form of exception so it will need to recurse.
+    */
+   channel->notify_pending_write = ARES_FALSE;
+ 
+-  for (node = ares_slist_node_first(channel->servers); node != NULL;
+-       node = ares_slist_node_next(node)) {
+-    ares_server_t *server = ares_slist_node_val(node);
+-    ares_conn_t   *conn   = server->tcp_conn;
++  node = ares_slist_node_first(channel->servers);
++  while (node != NULL) {
++    ares_server_t *server     = ares_slist_node_val(node);
++    ares_conn_t   *conn       = server->tcp_conn;
++    size_t         generation = channel->servers_generation;
+     ares_status_t  status;
+ 
+     if (conn == NULL) {
++      node = ares_slist_node_next(node);
+       continue;
+     }
+ 
+-    /* Enqueue any pending data if there is any */
++    /* Enqueue any pending data if there is any.  The flush runs the
++     * application's send function, which may have reconfigured the servers
++     * and removed this one; its connection is then already closed, which
++     * handle_conn_error() ignores. */
+     status = ares_conn_flush(conn);
+     if (status != ARES_SUCCESS) {
+       handle_conn_error(conn, ARES_TRUE, status);
+     }
++
++    /* Tearing down a connection runs the callbacks of the queries it ends,
++     * and those may reconfigure the servers too, destroying the ones the new
++     * configuration omits along with their list nodes.  A failure also moves
++     * this server further down the list.  So when either may have happened,
++     * start over from the head rather than step from this node; flushing a
++     * connection again is harmless. */
++    if (status != ARES_SUCCESS || channel->servers_generation != generation) {
++      node = ares_slist_node_first(channel->servers);
++      continue;
++    }
++
++    node = ares_slist_node_next(node);
+   }
+ 
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ }
+ 
+@@ -553,6 +650,8 @@ typedef enum {
+ typedef struct {
+   requeue_type_t     type;   /* type of entry, requeue or endquery */
+   unsigned short     qid;    /* query id */
++  size_t             serial; /* identifies the query the qid meant when
++                              * this entry was appended */
+   ares_server_t     *server; /* requeue only: optional */
+   ares_status_t      status; /* endquery only */
+   ares_dns_record_t *dnsrec; /* endquery only: optional */
+@@ -578,6 +677,7 @@ static ares_status_t ares_append_requeue_int(ares_array_t     **requeue,
+ 
+   entry.type   = type;
+   entry.qid    = query->qid;
++  entry.serial = query->serial;
+   entry.server = server;
+   entry.status = status;
+   entry.dnsrec = dnsrec;
+@@ -601,6 +701,53 @@ static ares_status_t ares_append_endqueue(ares_array_t     **requeue,
+     dnsrec);
+ }
+ 
++/*! Is the query the caller captured still the one holding \a qid?
++ *
++ *  A query id is a 16-bit wire value reissued as soon as the query holding it
++ *  is detached, so it names a slot rather than a query, and comparing the
++ *  pointer as well does not help: the replacement is often allocated at the
++ *  address the freed one had.  The serial is a channel-wide counter that is
++ *  never reused. */
++static ares_bool_t ares_query_is_live(const ares_channel_t *channel,
++                                      unsigned short qid, size_t serial)
++{
++  const ares_query_t *query =
++    ares_htable_szvp_get_direct(channel->queries_by_qid, qid);
++
++  if (query == NULL || query->serial != serial) {
++    return ARES_FALSE;
++  }
++
++  return ARES_TRUE;
++}
++
++/*! Is this exact server object still in the channel's server list?
++ *
++ *  Compares pointers only and never dereferences \a server.  Deferred
++ *  reclamation keeps an unlinked server readable for the rest of the call
++ *  that captured it, so reading through it is no longer a use-after-free --
++ *  but it has been removed from the configuration and must not be acted on,
++ *  which is what this reports.  A channel has a handful of servers, so the
++ *  linear scan does not matter. */
++ares_bool_t ares_server_in_channel(const ares_channel_t *channel,
++                                   const ares_server_t  *server)
++{
++  ares_slist_node_t *node;
++
++  if (server == NULL) {
++    return ARES_FALSE;
++  }
++
++  for (node = ares_slist_node_first(channel->servers); node != NULL;
++       node = ares_slist_node_next(node)) {
++    if (ares_slist_node_val(node) == server) {
++      return ARES_TRUE;
++    }
++  }
++
++  return ARES_FALSE;
++}
++
+ /* Drain the deferred requeue/endqueue list iteratively.  All flush sites
+  * (read_answers(), process_timeouts(), and ares_send_query()) funnel through
+  * here so that:
+@@ -636,11 +783,35 @@ static ares_status_t ares_flush_requeue(ares_channel_t       *channel,
+ 
+     query = ares_htable_szvp_get_direct(channel->queries_by_qid, entry.qid);
+ 
++    /* A query id is a 16-bit wire value and generate_unique_qid() only avoids
++     * ids that are live when it runs.  Within a single drain, a callback can
++     * cancel a query whose entry is still in this array -- releasing its id --
++     * and start a new lookup that is handed the same id.  The lookup above
++     * would then resolve this entry to a completely different query: an
++     * endquery entry would deliver one lookup's answer to another and free it,
++     * a requeue entry would put an in-flight query on the wire twice.  The
++     * serial is a channel-wide counter that is never reused, so it tells the
++     * two apart. */
++    if (query != NULL && query->serial != entry.serial) {
++      query = NULL;
++    }
++
+     if (entry.type == REQUEUE_REQUEUE) {
+       /* Query disappeared (e.g. a prior callback in this drain cancelled it) */
+       if (query == NULL) {
+         continue;
+       }
++      /* entry.server is a raw pointer captured before any callback in this
++       * drain ran.  A callback may legally re-enter the public API -- the
++       * channel lock is recursive -- and ares_set_servers*() destroys servers
++       * that are absent from the new configuration, so it may already be
++       * freed.  The query above is revalidated by qid for exactly this
++       * reason; do the same for the server, falling back to ordinary
++       * selection when it has gone. */
++      if (!ares_server_in_channel(channel, entry.server)) {
++        entry.server = NULL;
++      }
++
+       /* Re-dispatch via the internal entrypoint so any further requeues are
+        * appended back onto this same list and drained by the loop above,
+        * rather than recursing. */
+@@ -753,6 +924,13 @@ static ares_status_t process_read(ares_channel_t       *channel,
+     return status;
+   }
+ 
++  /* A later call to the receive function may have reconfigured the servers,
++   * tearing this connection down after earlier calls buffered answers on it.
++   * Its queries have moved to the new configuration, so drop the answers. */
++  if (conn->flags & ARES_CONN_FLAG_DEAD) {
++    return ARES_SUCCESS;
++  }
++
+   status = read_answers(conn, now);
+   if (status != ARES_SUCCESS) {
+     return status;
+@@ -939,6 +1117,24 @@ static ares_status_t process_answer(ares_channel_t      *channel,
+     goto cleanup;
+   }
+ 
++  /* RFC 5452 section 9.1: only accept a response that arrives on the
++   * connection the query was sent on, and so from the server it was sent to.
++   * For UDP, ares_conn_read() also drops a datagram whose source address or
++   * port is not the server's; matching the port is hardening beyond RFC 5452
++   * section 9.1, which only requires the address to match.  Otherwise any
++   * server we hold a connection to could answer, and get cached, a query that
++   * was only ever sent to some other server, and the cookie check below would
++   * run against the wrong server's cookie state.  Treat it like an unknown
++   * query id, before anything acts on it (cookies, server health, the cache).
++   * Our caller has already consumed the message from the connection's buffer,
++   * so TCP framing stays in sync.  A query not attached to any connection
++   * (query->conn == NULL) never matches.  This also drops a late answer from
++   * a server tried before a retry. */
++  if (query->conn != conn) {
++    status = ARES_SUCCESS;
++    goto cleanup;
++  }
++
+   /* Validate DNS cookie in response. This function may need to requeue the
+    * query. */
+   if (ares_cookie_validate(query, rdnsrec, conn, now, requeue)
+@@ -1043,6 +1239,15 @@ static void handle_conn_error(ares_conn_t *conn, ares_bool_t critical_failure,
+ {
+   ares_server_t *server = conn->server;
+ 
++  /* Already torn down, most likely by a reconfiguration from application code
++   * the failing call ran, such as the send function.  Its queries have been
++   * requeued, and its server did not fail -- it was removed, or the
++   * connection was closed deliberately -- so there is nothing to record and
++   * nothing left to close. */
++  if (conn->flags & ARES_CONN_FLAG_DEAD) {
++    return;
++  }
++
+   /* Increment failures first before requeue so it is unlikely to requeue
+    * to the same server */
+   if (critical_failure) {
+@@ -1359,6 +1564,14 @@ static ares_status_t ares_conn_query_write(ares_conn_t          *conn,
+       conn->flags & ARES_CONN_FLAG_TCP) {
+     channel->notify_pending_write = ARES_TRUE;
+     channel->notify_pending_write_cb(channel->notify_pending_write_cb_data);
++
++    /* The callback is application code and may have reconfigured the
++     * servers, closing this connection with the query already buffered on
++     * it.  Report it as a connection failure so the query is requeued rather
++     * than attached to the closed connection. */
++    if (conn->flags & ARES_CONN_FLAG_DEAD) {
++      return ARES_ECONNREFUSED;
++    }
+     return ARES_SUCCESS;
+   }
+ 
+@@ -1377,6 +1590,7 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+   ares_channel_t *channel = query->channel;
+   ares_array_t   *requeue = NULL;
+   unsigned short  qid     = query->qid;
++  size_t          serial  = query->serial;
+   ares_status_t   status;
+ 
+   status = ares_send_query_int(requested_server, query, now, &requeue);
+@@ -1393,8 +1607,7 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+    * been freed.  Do not dereference 'query' here.  If it is no longer tracked
+    * it ended, so don't report success to the caller (which would, e.g., cause
+    * ares_send_nolock() to write to a now-freed *qid). */
+-  if (status == ARES_SUCCESS &&
+-      ares_htable_szvp_get_direct(channel->queries_by_qid, qid) == NULL) {
++  if (status == ARES_SUCCESS && !ares_query_is_live(channel, qid, serial)) {
+     status = ARES_ETIMEOUT;
+   }
+ 
+@@ -1412,6 +1625,9 @@ static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
+   size_t          timeplus;
+   ares_status_t   status;
+   ares_bool_t     probe_downed_server = ARES_TRUE;
++  /* Captured before any application callback below, which may free the query */
++  unsigned short  qid    = query->qid;
++  size_t          serial = query->serial;
+ 
+   /* Choose the server to send the query to */
+   if (requested_server != NULL) {
+@@ -1443,6 +1659,32 @@ static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
+   conn = ares_fetch_connection(channel, server, query);
+   if (conn == NULL) {
+     status = ares_open_connection(&conn, channel, server, query->using_tcp);
++
++    /* Opening a connection runs application code -- the socket-open function
++     * from ares_set_socket_functions_ex(), and the ares_set_socket_callback()
++     * and ares_set_socket_configure_callback() callbacks -- any of which may
++     * reentrantly call ares_cancel() and free this query.  Re-check liveness
++     * by the qid captured at entry rather than dereferencing a possibly-freed
++     * query. */
++    if (!ares_query_is_live(channel, qid, serial)) {
++      return ARES_ECANCELLED;
++    }
++
++    /* Those same callbacks may have reconfigured the servers, which frees the
++     * ones the new configuration omits.  'server' was captured before the
++     * open; everything below reads it, including server_increment_failures()
++     * on the failure paths of the switch.
++     *
++     * Requeue rather than return: every exit from this function must either
++     * enqueue the query or end it, and the query is still live here -- it has
++     * not been written, is not attached to a connection, and on a first send
++     * has no timeout node, so returning would strand it forever.
++     * query->conn is NULL, so this does not read through the freed server. */
++    if (!ares_server_in_channel(channel, server)) {
++      return ares_requeue_query(query, now, ARES_ECONNREFUSED, ARES_TRUE, NULL,
++                                requeue);
++    }
++
+     switch (status) {
+       /* Good result, continue on */
+       case ARES_SUCCESS:
+@@ -1464,6 +1706,19 @@ static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
+ 
+   /* Write the query */
+   status = ares_conn_query_write(conn, query, now);
++
++  /* Writing runs application code too: ares_conn_query_write() reaches the
++   * send function installed by ares_set_socket_functions_ex(), which may
++   * reentrantly call ares_cancel() with the same hazard as above. */
++  if (!ares_query_is_live(channel, qid, serial)) {
++    return ARES_ECANCELLED;
++  }
++
++  /* Application code that tore this connection down during the write -- the
++   * send function, or the pending-write callback when the write is deferred,
++   * reconfiguring the servers, say -- surfaces here as ARES_ECONNREFUSED,
++   * even if the send itself reported success or never happened, so the query
++   * is requeued below rather than attached to the closed connection. */
+   switch (status) {
+     /* Good result, continue on */
+     case ARES_SUCCESS:
+@@ -1479,6 +1734,17 @@ static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
+     case ARES_ECONNREFUSED:
+     case ARES_EBADFAMILY:
+       handle_conn_error(conn, ARES_TRUE, status);
++      /* handle_conn_error() -> ares_close_connection() ->
++       * ares_requeue_queries() walks conn->queries_to_conn and may terminally
++       * end other queries on this connection.  If one of their callbacks
++       * reentrantly calls ares_cancel(), this query is freed too -- it is still
++       * linked in all_queries, since it only joins conn->queries_to_conn on the
++       * success path below.  Re-check liveness by the qid captured at entry
++       * rather than dereferencing a possibly-freed query.  Mirrors the guard in
++       * ares_send_query(). */
++      if (!ares_query_is_live(channel, qid, serial)) {
++        return ARES_ECONNREFUSED;
++      }
+       status = ares_requeue_query(query, now, status, ARES_TRUE, NULL, requeue);
+       if (status == ARES_ETIMEOUT) {
+         status = ARES_ECONNREFUSED;
+@@ -1597,11 +1863,18 @@ done:
+   return rv;
+ }
+ 
+-static void ares_detach_query(ares_query_t *query)
++void ares_detach_query(ares_query_t *query)
+ {
+   /* Remove the query from all the lists in which it is linked */
+   ares_query_remove_from_conn(query);
+-  ares_htable_szvp_remove(query->channel->queries_by_qid, query->qid);
++  /* Only release the qid slot if it is still ours.  A query detached before
++   * its callback can have its qid reissued to a lookup started from within
++   * that callback, and the ares_free_query() that follows detaches a second
++   * time -- which would otherwise evict the new lookup instead. */
++  if (ares_htable_szvp_get_direct(query->channel->queries_by_qid, query->qid) ==
++      query) {
++    ares_htable_szvp_remove(query->channel->queries_by_qid, query->qid);
++  }
+   ares_llist_node_destroy(query->node_all_queries);
+   query->node_all_queries = NULL;
+ }
+@@ -1624,6 +1897,16 @@ static void end_query(ares_channel_t *channel, ares_server_t *server,
+     return;
+   }
+ 
++  /* Detach from all lookup lists before the callback, otherwise a reentrant
++   * ares_cancel() from within it would find this query still linked, free it,
++   * and the ares_free_query() below would double-free.  Mirrors
++   * ares_flush_requeue() for every synchronous path that reaches here with a
++   * NULL requeue: connection teardown via handle_conn_error(), and server
++   * removal via ares_servers_update() and ares_destroy_servers_state(), both
++   * of which reach ares_close_sockets().
++   * ares_detach_query() may safely run twice on the same query. */
++  ares_detach_query(query);
++
+   /* Invoke the callback. */
+   query->callback(query->arg, status, query->timeouts, dnsrec);
+   ares_free_query(query);
+@@ -1631,7 +1914,8 @@ static void end_query(ares_channel_t *channel, ares_server_t *server,
+   /* Check and notify if no other queries are enqueued on the channel.  This
+    * must come after the callback and freeing the query for 2 reasons.
+    *  1) The callback itself may enqueue a new query
+-   *  2) Technically the current query isn't detached until it is free()'d.
++   *  2) The current query is detached above, before the callback, so by this
++   *     point it is no longer tracked.
+    */
+   ares_queue_notify_empty(channel);
+ }
+@@ -1644,6 +1928,7 @@ void ares_free_query(ares_query_t *query)
+   query->arg      = NULL;
+   /* Deallocate the memory associated with the query */
+   ares_dns_record_destroy(query->query);
++  ares_free(query->qcache_key);
+ 
+   ares_free(query);
+ }
+diff --git a/deps/cares/src/lib/ares_qcache.c b/deps/cares/src/lib/ares_qcache.c
+index ad3bc83505..f48669b56c 100644
+--- a/deps/cares/src/lib/ares_qcache.c
++++ b/deps/cares/src/lib/ares_qcache.c
+@@ -38,7 +38,7 @@ typedef struct {
+   time_t             insert_ts;
+ } ares_qcache_entry_t;
+ 
+-static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
++char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+ {
+   ares_buf_t      *buf = ares_buf_create();
+   size_t           i;
+@@ -49,7 +49,22 @@ static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+     return NULL; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
+-  /* Format is OPCODE|FLAGS[|QTYPE1|QCLASS1|QNAME1]... */
++  /* Format is
++   * OPCODE|FLAGS[|EDNS|VER|FLAGS[|ID:HEX]...]|QDCOUNT[|TYPE|CLASS|LEN:QNAME]...
++   *
++   * The EDNS section matters: an answer fetched under one set of EDNS options
++   * is not interchangeable with one fetched under another.  A request with no
++   * OPT record appends nothing; note that EDNS is on by default, so ordinary
++   * lookups do carry one and their keys did change with this.
++   *
++   * Everything a caller does not control is emitted before the questions, so
++   * the names are always last.  A name reaches the key unescaped, so anything
++   * keyed after it could otherwise be imitated by a name containing that same
++   * text, giving two different requests one key.  The question count is part
++   * of that: without it, a request with two questions and a request with one
++   * whose name spells out the second produce identical keys.  Each name is
++   * also length-prefixed, so adjacent names cannot be made to run together
++   * even when the question counts match. */
+ 
+   status = ares_buf_append_str(
+     buf, ares_dns_opcode_tostr(ares_dns_record_get_opcode(dnsrec)));
+@@ -63,7 +78,11 @@ static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+   }
+ 
+   flags = ares_dns_record_get_flags(dnsrec);
+-  /* Only care about RD and CD */
++  /* RD, CD and AD.  AD is here because RFC 6840 section 5.7 defines it in a
++   * request as a signal that the requester wants the AD bit evaluated in the
++   * response, and section 5.8 says a validating resolver should only set AD
++   * in a response when the request carried DO or AD -- so an answer fetched
++   * without it can legitimately differ from one fetched with it. */
+   if (flags & ARES_FLAG_RD) {
+     status = ares_buf_append_str(buf, "rd");
+     if (status != ARES_SUCCESS) {
+@@ -76,6 +95,95 @@ static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+       goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+   }
++  if (flags & ARES_FLAG_AD) {
++    status = ares_buf_append_str(buf, "ad");
++    if (status != ARES_SUCCESS) {
++      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
++  /* EDNS state.  Skipped entirely when the request carries no OPT record. */
++  {
++    const ares_dns_rr_t *opt = ares_dns_get_opt_rr_const(dnsrec);
++
++    if (opt != NULL) {
++      size_t opt_cnt = ares_dns_rr_get_opt_cnt(opt, ARES_RR_OPT_OPTIONS);
++      size_t j;
++
++      status = ares_buf_append_str(buf, "|EDNS|");
++      if (status != ARES_SUCCESS) {
++        goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++      }
++      status = ares_buf_append_num_hex(
++        buf, ares_dns_rr_get_u8(opt, ARES_RR_OPT_VERSION), 0);
++      if (status != ARES_SUCCESS) {
++        goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++      }
++      status = ares_buf_append_byte(buf, '|');
++      if (status != ARES_SUCCESS) {
++        goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++      }
++      /* Carries the DO bit, so a DNSSEC-aware request cannot be served an
++       * answer that was fetched without it. */
++      status = ares_buf_append_num_hex(
++        buf, ares_dns_rr_get_u16(opt, ARES_RR_OPT_FLAGS), 0);
++      if (status != ARES_SUCCESS) {
++        goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++      }
++
++      /* The advertised UDP payload size is deliberately excluded: it
++       * constrains how a response is transported, not what it says.  A server
++       * that cannot fit the additional section may omit it without setting
++       * the TC bit (RFC 2181 section 9), so two sizes can produce answers
++       * that differ outside the answer section; that is accepted here. */
++      for (j = 0; j < opt_cnt; j++) {
++        const unsigned char *val     = NULL;
++        size_t               val_len = 0;
++        unsigned short       optid =
++          ares_dns_rr_get_opt(opt, ARES_RR_OPT_OPTIONS, j, &val, &val_len);
++
++        /* DNS cookies are per-server transport state and say nothing about
++         * the content of an answer.  A cookie c-ares adds never reaches here
++         * -- ares_cookie_apply() writes to query->query, after this key has
++         * been derived -- so this only ever skips one the caller supplied. */
++        if (optid == ARES_OPT_PARAM_COOKIE) {
++          continue;
++        }
++
++        status = ares_buf_append_byte(buf, '|');
++        if (status != ARES_SUCCESS) {
++          goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++        }
++        status = ares_buf_append_num_hex(buf, optid, 0);
++        if (status != ARES_SUCCESS) {
++          goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++        }
++        status = ares_buf_append_byte(buf, ':');
++        if (status != ARES_SUCCESS) {
++          goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++        }
++        if (val != NULL) {
++          size_t k;
++          for (k = 0; k < val_len; k++) {
++            status = ares_buf_append_num_hex(buf, val[k], 2);
++            if (status != ARES_SUCCESS) {
++              goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++            }
++          }
++        }
++      }
++    }
++  }
++
++  status = ares_buf_append_byte(buf, '|');
++  if (status != ARES_SUCCESS) {
++    goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++  }
++
++  status = ares_buf_append_num_dec(buf, ares_dns_record_query_cnt(dnsrec), 0);
++  if (status != ARES_SUCCESS) {
++    goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++  }
+ 
+   for (i = 0; i < ares_dns_record_query_cnt(dnsrec); i++) {
+     const char         *name;
+@@ -93,7 +201,13 @@ static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+       goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+ 
+-    status = ares_buf_append_str(buf, ares_dns_rec_type_tostr(qtype));
++    /* Numeric, not the mnemonic: ares_dns_rec_type_tostr() returns "UNKNOWN"
++     * for every type outside its table, and ares_dns_record_query_add() does
++     * not validate the type, so any 16-bit value reaches here through the
++     * ordinary public API.  Two such lookups -- LOC and DNAME, say -- would
++     * otherwise key identically and be answered with each other's records.
++     * The key only has to be injective, not readable. */
++    status = ares_buf_append_num_dec(buf, (size_t)qtype, 0);
+     if (status != ARES_SUCCESS) {
+       goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+@@ -103,7 +217,10 @@ static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+       goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+ 
+-    status = ares_buf_append_str(buf, ares_dns_class_tostr(qclass));
++    /* Numeric for the same reason.  ares_dns_record_query_add() does reject
++     * classes outside its list today, so the mnemonic is safe -- but the key
++     * should not depend on that validation staying where it is. */
++    status = ares_buf_append_num_dec(buf, (size_t)qclass, 0);
+     if (status != ARES_SUCCESS) {
+       goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+@@ -121,6 +238,21 @@ static char *ares_qcache_calc_key(const ares_dns_record_t *dnsrec)
+       name_len--;
+     }
+ 
++    /* Length-prefix the name so it is self-delimiting.  The question count
++     * above stops one question imitating two, but with the counts equal the
++     * boundary between adjacent names is still guessable, since names reach
++     * the key unescaped separated only by '|'.  A length makes each name
++     * unambiguous for any question count. */
++    status = ares_buf_append_num_dec(buf, name_len, 0);
++    if (status != ARES_SUCCESS) {
++      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++
++    status = ares_buf_append_byte(buf, ':');
++    if (status != ARES_SUCCESS) {
++      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++
+     if (name_len > 0) {
+       status = ares_buf_append(buf, (const unsigned char *)name, name_len);
+       if (status != ARES_SUCCESS) {
+@@ -301,10 +433,10 @@ static unsigned int ares_qcache_soa_minimum(ares_dns_record_t *dnsrec)
+ }
+ 
+ /* On success, takes ownership of dnsrec */
+-static ares_status_t ares_qcache_insert_int(ares_qcache_t           *qcache,
+-                                            ares_dns_record_t       *qresp,
+-                                            const ares_dns_record_t *qreq,
+-                                            const ares_timeval_t    *now)
++static ares_status_t ares_qcache_insert_int(ares_qcache_t        *qcache,
++                                            ares_dns_record_t    *qresp,
++                                            const char           *key,
++                                            const ares_timeval_t *now)
+ {
+   ares_qcache_entry_t *entry;
+   unsigned int         ttl;
+@@ -350,11 +482,11 @@ static ares_status_t ares_qcache_insert_int(ares_qcache_t           *qcache,
+   entry->expire_ts = (time_t)now->sec + (time_t)ttl;
+   entry->insert_ts = (time_t)now->sec;
+ 
+-  /* We can't guarantee the server responded with the same flags as the
+-   * request had, so we have to re-parse the request in order to generate the
+-   * key for caching, but we'll only do this once we know for sure we really
+-   * want to cache it */
+-  entry->key = ares_qcache_calc_key(qreq);
++  /* The key was derived from the caller's request when the query was created.
++   * It must not be recomputed from query->query here: the EDNS fallback path
++   * strips the OPT record from that record before a successful retry, so a
++   * key derived from it would not match the one a later lookup computes. */
++  entry->key = ares_strdup(key);
+   if (entry->key == NULL) {
+     goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+   }
+@@ -382,31 +514,25 @@ fail:
+   /* LCOV_EXCL_STOP */
+ }
+ 
+-ares_status_t ares_qcache_fetch(ares_channel_t           *channel,
+-                                const ares_timeval_t     *now,
+-                                const ares_dns_record_t  *dnsrec,
+-                                const ares_dns_record_t **dnsrec_resp)
++ares_status_t ares_qcache_fetch(ares_channel_t       *channel,
++                                const ares_timeval_t *now, const char *key,
++                                ares_dns_record_t **dnsrec_resp)
+ {
+-  char                *key = NULL;
+   ares_qcache_entry_t *entry;
+   ares_status_t        status = ARES_SUCCESS;
+ 
+-  if (channel == NULL || dnsrec == NULL || dnsrec_resp == NULL) {
++  if (channel == NULL || key == NULL || dnsrec_resp == NULL) {
+     return ARES_EFORMERR;
+   }
+ 
++  *dnsrec_resp = NULL;
++
+   if (channel->qcache == NULL) {
+     return ARES_ENOTFOUND;
+   }
+ 
+   ares_qcache_expire(channel->qcache, now);
+ 
+-  key = ares_qcache_calc_key(dnsrec);
+-  if (key == NULL) {
+-    status = ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+-    goto done;            /* LCOV_EXCL_LINE: OutOfMemory */
+-  }
+-
+   entry = ares_htable_strvp_get_direct(channel->qcache->cache, key);
+   if (entry == NULL) {
+     status = ARES_ENOTFOUND;
+@@ -416,10 +542,24 @@ ares_status_t ares_qcache_fetch(ares_channel_t           *channel,
+   ares_dns_record_ttl_decrement(entry->dnsrec,
+                                 (unsigned int)(now->sec - entry->insert_ts));
+ 
+-  *dnsrec_resp = entry->dnsrec;
++  /* Hand back a copy the caller owns rather than the cache's own record.
++   * This is passed straight into an application callback, and that callback
++   * is allowed to re-enter c-ares.  Any lookup it starts runs the expiry
++   * reaper first, and changing the server list flushes the cache outright --
++   * either would destroy this entry while the callback still held a pointer
++   * into it.  Mirrors the ownership fix already made on the insert side. */
++  status = ares_dns_record_duplicate_ex(dnsrec_resp, entry->dnsrec);
++  if (status != ARES_SUCCESS) {
++    /* Could not hand back a private copy.  Report a miss so the lookup falls
++     * through to a real query rather than failing outright: duplication
++     * writes and re-parses the record, so it can fail for reasons other than
++     * memory exhaustion, and none of them are a reason to fail a lookup that
++     * would have gone to a server a moment earlier. */
++    status = ARES_ENOTFOUND; /* LCOV_EXCL_LINE: UntestablePath */
++    goto done;               /* LCOV_EXCL_LINE: UntestablePath */
++  }
+ 
+ done:
+-  ares_free(key);
+   return status;
+ }
+ 
+@@ -428,13 +568,25 @@ ares_status_t ares_qcache_insert(ares_channel_t          *channel,
+                                  const ares_query_t      *query,
+                                  const ares_dns_record_t *dnsrec)
+ {
+-  ares_dns_record_t *dupdns = ares_dns_record_duplicate(dnsrec);
++  ares_dns_record_t *dupdns;
+   ares_status_t      status;
+ 
++  /* Checked before the duplicate below, which is a full write and re-parse:
++   * no key means caching is switched off, so the copy would be thrown away.
++   * ares_init_options() always creates the cache object -- it is disabled by
++   * a zero maximum TTL, not by a NULL pointer -- so this is the only place
++   * the distinction is visible here. */
++  if (query->qcache_key == NULL) {
++    return ARES_ENOTIMP;
++  }
++
++  dupdns = ares_dns_record_duplicate(dnsrec);
+   if (dupdns == NULL) {
+     return ARES_ENOMEM;
+   }
+-  status = ares_qcache_insert_int(channel->qcache, dupdns, query->query, now);
++
++  status =
++    ares_qcache_insert_int(channel->qcache, dupdns, query->qcache_key, now);
+   if (status != ARES_SUCCESS) {
+     ares_dns_record_destroy(dupdns);
+   }
+diff --git a/deps/cares/src/lib/ares_query.c b/deps/cares/src/lib/ares_query.c
+index ca3b6a9b73..0cf7f70760 100644
+--- a/deps/cares/src/lib/ares_query.c
++++ b/deps/cares/src/lib/ares_query.c
+@@ -125,7 +125,12 @@ ares_status_t ares_query_dnsrec(ares_channel_t *channel, const char *name,
+   }
+ 
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+   status = ares_query_nolock(channel, name, dnsclass, type, callback, arg, qid);
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+   return status;
+ }
+diff --git a/deps/cares/src/lib/ares_search.c b/deps/cares/src/lib/ares_search.c
+index c605caf42c..ebc3d91e20 100644
+--- a/deps/cares/src/lib/ares_search.c
++++ b/deps/cares/src/lib/ares_search.c
+@@ -463,7 +463,12 @@ void ares_search(ares_channel_t *channel, const char *name, int dnsclass,
+   }
+ 
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+   ares_search_int(channel, dnsrec, ares_dnsrec_convert_cb, carg);
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ 
+   ares_dns_record_destroy(dnsrec);
+@@ -481,7 +486,12 @@ ares_status_t ares_search_dnsrec(ares_channel_t          *channel,
+   }
+ 
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+   status = ares_search_int(channel, dnsrec, callback, arg);
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ 
+   return status;
+diff --git a/deps/cares/src/lib/ares_send.c b/deps/cares/src/lib/ares_send.c
+index 6efa9580b2..117745ce28 100644
+--- a/deps/cares/src/lib/ares_send.c
++++ b/deps/cares/src/lib/ares_send.c
+@@ -111,11 +111,33 @@ ares_status_t ares_send_nolock(ares_channel_t *channel, ares_server_t *server,
+                                ares_callback_dnsrec callback, void *arg,
+                                unsigned short *qid)
+ {
+-  ares_query_t            *query;
+-  ares_timeval_t           now;
+-  ares_status_t            status;
+-  unsigned short           id          = generate_unique_qid(channel);
+-  const ares_dns_record_t *dnsrec_resp = NULL;
++  ares_query_t      *query;
++  ares_timeval_t     now;
++  ares_status_t      status;
++  unsigned short     id          = generate_unique_qid(channel);
++  ares_dns_record_t *dnsrec_resp = NULL;
++  char              *qcache_key  = NULL;
++
++  /* A channel being destroyed accepts no new queries.  ares_destroy(3)
++   * documents that a callback must not add new requests to a channel being
++   * destroyed.  Refuse it, but still notify: ARES_EDESTRUCTION is documented
++   * in ares_query(3), ares_send(3), ares_search(3) and ares_getaddrinfo(3) as
++   * a status delivered to the callback, and every caller frees its own
++   * context from there.
++   *
++   * Not notified if we are already inside such a notification: an application
++   * whose callback starts a replacement lookup on every invocation would
++   * otherwise re-enter here from within the callback without bound and
++   * exhaust the stack.  At that depth it is already past the contract
++   * ares_destroy(3) documents. */
++  if (!channel->sys_up) {
++    if (!channel->in_shutdown_refusal) {
++      channel->in_shutdown_refusal = ARES_TRUE;
++      callback(arg, ARES_EDESTRUCTION, 0, NULL);
++      channel->in_shutdown_refusal = ARES_FALSE;
++    }
++    return ARES_EDESTRUCTION;
++  }
+ 
+   ares_tvnow(&now);
+ 
+@@ -124,13 +146,28 @@ ares_status_t ares_send_nolock(ares_channel_t *channel, ares_server_t *server,
+     return ARES_ENOSERVER;
+   }
+ 
+-  if (!(flags & ARES_SEND_FLAG_NOCACHE)) {
++  /* Derive the cache key once, from the caller's request, and only when the
++   * cache is actually on.  The send path may mutate query->query afterwards
++   * -- the EDNS fallback strips its OPT record -- and a key derived from it
++   * later would not match.  ares_init_options() always creates the cache
++   * object, so a zero maximum TTL is what "off" means. */
++  if (channel->qcache_max_ttl > 0) {
++    qcache_key = ares_qcache_calc_key(dnsrec);
++    if (qcache_key == NULL) {
++      callback(arg, ARES_ENOMEM, 0, NULL); /* LCOV_EXCL_LINE: OutOfMemory */
++      return ARES_ENOMEM;                  /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
++  if (qcache_key != NULL && !(flags & ARES_SEND_FLAG_NOCACHE)) {
+     /* Check query cache */
+-    status = ares_qcache_fetch(channel, &now, dnsrec, &dnsrec_resp);
++    status = ares_qcache_fetch(channel, &now, qcache_key, &dnsrec_resp);
+     if (status != ARES_ENOTFOUND) {
+       /* ARES_SUCCESS means we retrieved the cache, anything else is a critical
+        * failure, all result in termination */
++      ares_free(qcache_key);
+       callback(arg, status, 0, dnsrec_resp);
++      ares_dns_record_destroy(dnsrec_resp);
+       return status;
+     }
+   }
+@@ -138,19 +175,27 @@ ares_status_t ares_send_nolock(ares_channel_t *channel, ares_server_t *server,
+   /* Allocate space for query and allocated fields. */
+   query = ares_malloc(sizeof(ares_query_t));
+   if (!query) {
+-    callback(arg, ARES_ENOMEM, 0, NULL); /* LCOV_EXCL_LINE: OutOfMemory */
+-    return ARES_ENOMEM;                  /* LCOV_EXCL_LINE: OutOfMemory */
++    /* LCOV_EXCL_START: OutOfMemory */
++    ares_free(qcache_key);
++    callback(arg, ARES_ENOMEM, 0, NULL);
++    return ARES_ENOMEM;
++    /* LCOV_EXCL_STOP */
+   }
+   memset(query, 0, sizeof(*query));
+ 
+   query->channel      = channel;
+   query->qid          = id;
++  query->serial       = ++channel->query_serial;
+   query->timeout.sec  = 0;
+   query->timeout.usec = 0;
+   query->using_tcp =
+     (channel->flags & ARES_FLAG_USEVC) ? ARES_TRUE : ARES_FALSE;
+ 
+   /* Duplicate Query */
++  /* The query adopts the key derived above; ares_free_query() releases it. */
++  query->qcache_key = qcache_key;
++  qcache_key        = NULL;
++
+   status = ares_dns_record_duplicate_ex(&query->query, dnsrec);
+   if (status != ARES_SUCCESS) {
+     /* Sometimes we might get a EBADRESP response from duplicate due to
+@@ -158,7 +203,11 @@ ares_status_t ares_send_nolock(ares_channel_t *channel, ares_server_t *server,
+     if (status == ARES_EBADRESP) {
+       status = ARES_EBADQUERY;
+     }
+-    ares_free(query);
++    /* ares_free_query() rather than ares_free(): the query was zeroed above,
++     * so detaching finds every node NULL and the qid not yet registered, and
++     * it also releases qcache_key.  Reachable without memory pressure -- a
++     * name that is not a valid hostname fails the duplicate. */
++    ares_free_query(query);
+     callback(arg, status, 0, NULL);
+     return status;
+   }
+@@ -209,6 +258,12 @@ ares_status_t ares_send_nolock(ares_channel_t *channel, ares_server_t *server,
+    */
+   if (!ares_htable_szvp_insert(channel->queries_by_qid, query->qid, query)) {
+     /* LCOV_EXCL_START: OutOfMemory */
++    /* The query is already chained into all_queries, so a reentrant
++     * ares_cancel() from the callback below would find it, run the
++     * application callback a second time for one lookup, and free it -- and
++     * the ares_free_query() here would then double-free.  Same ordering as
++     * ares_cancel() and ares_destroy(): unlink first, notify second. */
++    ares_detach_query(query);
+     callback(arg, ARES_ENOMEM, 0, NULL);
+     ares_free_query(query);
+     return ARES_ENOMEM;
+@@ -217,10 +272,21 @@ ares_status_t ares_send_nolock(ares_channel_t *channel, ares_server_t *server,
+ 
+   /* Perform the first query action. */
+ 
++  /* Sending opens and writes to connections and can mark a server down, both
++   * of which notify.  This bracket keeps any connection or server unlinked
++   * during the send readable until it returns.  It is never the outermost
++   * one: every public entry point that can get here, and query processing,
++   * holds its own, so delivery waits until the caller -- which may still be
++   * holding its own lookup state, as ares_getaddrinfo() does -- has unwound
++   * too. */
++  ares_deferred_cb_enter(channel);
+   status = ares_send_query(server, query, &now);
++  ares_deferred_cb_leave(channel);
++
+   if (status == ARES_SUCCESS && qid) {
+     *qid = id;
+   }
++
+   return status;
+ }
+ 
+@@ -236,9 +302,14 @@ ares_status_t ares_send_dnsrec(ares_channel_t          *channel,
+   }
+ 
+   ares_channel_lock(channel);
++  /* Notifications raised along the way are delivered once this whole call
++   * has unwound, not from inside the internals it runs.  See
++   * ares_deferred_cb_enter(). */
++  ares_deferred_cb_enter(channel);
+ 
+   status = ares_send_nolock(channel, NULL, 0, dnsrec, callback, arg, qid);
+ 
++  ares_deferred_cb_leave(channel);
+   ares_channel_unlock(channel);
+ 
+   return status;
+diff --git a/deps/cares/src/lib/ares_socket.c b/deps/cares/src/lib/ares_socket.c
+index 4ad3034021..29d595e1a9 100644
+--- a/deps/cares/src/lib/ares_socket.c
++++ b/deps/cares/src/lib/ares_socket.c
+@@ -127,6 +127,32 @@ ares_bool_t ares_sockaddr_addr_eq(const struct sockaddr  *sa,
+   return ARES_FALSE; /* different */
+ }
+ 
++ares_bool_t ares_sockaddr_addr_port_eq(const struct sockaddr  *sa,
++                                       const struct ares_addr *aa,
++                                       unsigned short          port)
++{
++  unsigned short sa_port;
++
++  if (!ares_sockaddr_addr_eq(sa, aa)) {
++    return ARES_FALSE;
++  }
++
++  /* ares_sockaddr_addr_eq() only matches AF_INET and AF_INET6 */
++  if (sa->sa_family == AF_INET) {
++    sa_port = (CARES_INADDR_CAST(const struct sockaddr_in *, sa))->sin_port;
++  } else {
++    sa_port = (CARES_INADDR_CAST(const struct sockaddr_in6 *, sa))->sin6_port;
++  }
++
++  /* A port of 0 means the source port was not reported, so only the address
++   * can be checked. */
++  if (sa_port != 0 && ntohs(sa_port) != port) {
++    return ARES_FALSE;
++  }
++
++  return ARES_TRUE;
++}
++
+ ares_conn_err_t ares_socket_write(ares_channel_t *channel, ares_socket_t fd,
+                                   const void *data, size_t len, size_t *written,
+                                   const struct sockaddr *sa,
+diff --git a/deps/cares/src/lib/ares_socket.h b/deps/cares/src/lib/ares_socket.h
+index 24a99ab331..1ede6987ee 100644
+--- a/deps/cares/src/lib/ares_socket.h
++++ b/deps/cares/src/lib/ares_socket.h
+@@ -139,8 +139,31 @@ typedef enum {
+   ARES_CONN_ERR_FAILURE      = 99  /*!< Generic failure */
+ } ares_conn_err_t;
+ 
++/*! Compare the IP address of a socket address with an ares_addr.  The port
++ *  in the socket address is ignored.
++ *
++ *  \param[in] sa  Socket address (AF_INET or AF_INET6)
++ *  \param[in] aa  Address to compare against
++ *  \return ARES_TRUE if the address families and IP addresses are equal,
++ *          ARES_FALSE otherwise
++ */
+ ares_bool_t     ares_sockaddr_addr_eq(const struct sockaddr  *sa,
+                                       const struct ares_addr *aa);
++
++/*! Compare the IP address and port of a socket address with an ares_addr and
++ *  port.  A port of 0 in the socket address means the port is unknown, so it
++ *  matches any port.
++ *
++ *  \param[in] sa    Socket address (AF_INET or AF_INET6)
++ *  \param[in] aa    Address to compare against
++ *  \param[in] port  Port to compare against, in host byte order
++ *  \return ARES_TRUE if the address families and IP addresses are equal and
++ *          the ports are equal or the socket address port is 0, ARES_FALSE
++ *          otherwise
++ */
++ares_bool_t     ares_sockaddr_addr_port_eq(const struct sockaddr  *sa,
++                                           const struct ares_addr *aa,
++                                           unsigned short          port);
+ ares_status_t   ares_socket_configure(ares_channel_t *channel, int family,
+                                       ares_bool_t is_tcp, ares_socket_t fd);
+ ares_conn_err_t ares_socket_enable_tfo(const ares_channel_t *channel,
+diff --git a/deps/cares/src/lib/ares_sysconfig_files.c b/deps/cares/src/lib/ares_sysconfig_files.c
+index 2caa3b2000..50bdd12190 100644
+--- a/deps/cares/src/lib/ares_sysconfig_files.c
++++ b/deps/cares/src/lib/ares_sysconfig_files.c
+@@ -424,7 +424,9 @@ static ares_status_t process_option(ares_sysconfig_t *sysconfig,
+     }
+     sysconfig->timeout_ms = valint * 1000;
+   } else if (ares_streq(key, "retry") || ares_streq(key, "attempts")) {
+-    if (valint == 0) {
++    if (valint == 0 || valint > 255) {
++      /* A bogus attempt count must not become an effectively unbounded
++       * retry loop; ignore it like other invalid options. */
+       status = ARES_EFORMERR;
+       goto done;
+     }
+@@ -589,7 +591,10 @@ ares_status_t ares_sysconfig_parse_resolv_line(const ares_channel_t *channel,
+ 
+   ares_buf_consume_whitespace(line, ARES_TRUE);
+ 
+-  status = buf_fetch_string(line, value, sizeof(value));
++  ares_buf_tag(line);
++  ares_buf_consume_until_charset(line, (const unsigned char *)"#;", 2,
++                                 ARES_FALSE);
++  status = ares_buf_tag_fetch_string(line, value, sizeof(value));
+   if (status != ARES_SUCCESS) {
+     return ARES_SUCCESS;
+   }
+@@ -608,8 +613,13 @@ ares_status_t ares_sysconfig_parse_resolv_line(const ares_channel_t *channel,
+     }
+   } else if (ares_streq(option, "lookup") ||
+              ares_streq(option, "hostresorder")) {
+-    ares_buf_tag_rollback(line);
+-    status = config_lookup(sysconfig, line, " \t");
++    ares_buf_t *value_buf =
++      ares_buf_create_const((const unsigned char *)value, ares_strlen(value));
++    if (value_buf == NULL) {
++      return ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++    status = config_lookup(sysconfig, value_buf, " \t");
++    ares_buf_destroy(value_buf);
+   } else if (ares_streq(option, "search")) {
+     status = config_search(sysconfig, value, 0);
+   } else if (ares_streq(option, "nameserver")) {
+diff --git a/deps/cares/src/lib/ares_update_servers.c b/deps/cares/src/lib/ares_update_servers.c
+index f8d441accf..6c6d4e1db9 100644
+--- a/deps/cares/src/lib/ares_update_servers.c
++++ b/deps/cares/src/lib/ares_update_servers.c
+@@ -207,6 +207,8 @@ static ares_status_t parse_nameserver_uri(ares_buf_t     *buf,
+   char          hoststr[256];
+   size_t        addrlen;
+ 
++  memset(sconfig, 0, sizeof(*sconfig));
++
+   status = ares_uri_parse_buf(&uri, buf);
+   if (status != ARES_SUCCESS) {
+     return status;
+@@ -740,17 +742,36 @@ static ares_bool_t ares_servers_remove_stale(ares_channel_t *channel,
+ {
+   ares_bool_t        stale_removed = ARES_FALSE;
+   ares_slist_node_t *snode         = ares_slist_node_first(channel->servers);
++  size_t             generation    = channel->servers_generation;
+ 
++  /* Re-read from the head each pass rather than caching the next node.
++   * ares_slist_node_destroy() below reaches application callbacks, by way of
++   * ares_destroy_server() -> ares_close_sockets() -> ares_requeue_queries(),
++   * and a nested reconfiguration from one of those destroys the remaining
++   * stale servers -- including whichever one a cached pointer referred to. */
+   while (snode != NULL) {
+-    ares_slist_node_t   *snext  = ares_slist_node_next(snode);
+     const ares_server_t *server = ares_slist_node_val(snode);
+-    if (!ares_server_in_newconfig(server, srvlist)) {
+-      /* This will clean up all server state via the destruction callback and
+-       * move any queries to new servers */
+-      ares_slist_node_destroy(snode);
+-      stale_removed = ARES_TRUE;
++
++    if (ares_server_in_newconfig(server, srvlist)) {
++      snode = ares_slist_node_next(snode);
++      continue;
+     }
+-    snode = snext;
++
++    /* This will clean up all server state via the destruction callback and
++     * move any queries to new servers */
++    ares_slist_node_destroy(snode);
++    stale_removed = ARES_TRUE;
++
++    /* A callback reached from the destroy above may have reconfigured the
++     * server list against a newer configuration.  That call has already
++     * reconciled the whole list, so whatever remains belongs to it and not to
++     * srvlist -- stop rather than deleting its servers. */
++    if (channel->servers_generation != generation) {
++      break;
++    }
++
++    /* The callbacks above may have removed further servers, so restart. */
++    snode = ares_slist_node_first(channel->servers);
+   }
+   return stale_removed;
+ }
+@@ -775,6 +796,14 @@ ares_status_t ares_servers_update(ares_channel_t *channel,
+     return ARES_EFORMERR; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
++  /* Removing servers closes their connections, which notifies.  Deliver
++   * once this call is done rather than from inside the teardown. */
++  ares_deferred_cb_enter(channel);
++
++  /* Bumped before anything below can reach an application callback, so a
++   * nested reconfiguration is distinguishable from our own work. */
++  channel->servers_generation++;
++
+   /* NOTE: a NULL or zero entry server list is considered valid due to
+    *       real-world people needing support for this for their test harnesses
+    */
+@@ -843,6 +872,7 @@ ares_status_t ares_servers_update(ares_channel_t *channel,
+   status = ARES_SUCCESS;
+ 
+ done:
++  ares_deferred_cb_leave(channel);
+   return status;
+ }
+ 
+diff --git a/deps/cares/src/lib/dsa/ares_htable.c b/deps/cares/src/lib/dsa/ares_htable.c
+index d6ac7a065a..4dc8fad1c3 100644
+--- a/deps/cares/src/lib/dsa/ares_htable.c
++++ b/deps/cares/src/lib/dsa/ares_htable.c
+@@ -61,9 +61,9 @@ static unsigned int ares_htable_generate_seed(ares_htable_t *htable)
+   /* Mix stack address, heap address, and time to generate a random seed, it
+    * doesn't have to be super secure, just quick.  Likelihood of a hash
+    * collision attack is very low with a small amount of effort */
+-  seed |= (unsigned int)((size_t)htable & 0xFFFFFFFF);
+-  seed |= (unsigned int)((size_t)&seed & 0xFFFFFFFF);
+-  seed |= (unsigned int)(((ares_uint64_t)t) & 0xFFFFFFFF);
++  seed ^= (unsigned int)((size_t)htable & 0xFFFFFFFF);
++  seed ^= (unsigned int)((size_t)&seed & 0xFFFFFFFF);
++  seed ^= (unsigned int)(((ares_uint64_t)t) & 0xFFFFFFFF);
+   return seed;
+ #endif
+ }
+diff --git a/deps/cares/src/lib/event/ares_event_select.c b/deps/cares/src/lib/event/ares_event_select.c
+index df758b5a1e..1c211ecc28 100644
+--- a/deps/cares/src/lib/event/ares_event_select.c
++++ b/deps/cares/src/lib/event/ares_event_select.c
+@@ -46,6 +46,13 @@ static ares_bool_t ares_evsys_select_init(ares_event_thread_t *e)
+   if (e->ev_signal == NULL) {
+     return ARES_FALSE; /* LCOV_EXCL_LINE: UntestablePath */
+   }
++  /* The wake pipe must fit in an fd_set too.  If it does not, the update
++   * that registers it is rejected and freed, leaving e->ev_signal dangling,
++   * so fail initialization instead. */
++  if (e->ev_signal->fd >= (ares_socket_t)FD_SETSIZE) {
++    e->ev_signal = NULL;
++    return ARES_FALSE;
++  }
+   return ARES_TRUE;
+ }
+ 
+@@ -56,7 +63,13 @@ static void ares_evsys_select_destroy(ares_event_thread_t *e)
+ 
+ static ares_bool_t ares_evsys_select_event_add(ares_event_t *event)
+ {
+-  (void)event;
++  /* select() can only watch descriptors below FD_SETSIZE; FD_SET() on a
++   * higher descriptor writes past the end of the fd_set.  Refuse the
++   * registration instead.  The socket then never reports activity, so a
++   * query using it waits out its timeout rather than corrupting memory. */
++  if (event->fd != ARES_SOCKET_BAD && event->fd >= (ares_socket_t)FD_SETSIZE) {
++    return ARES_FALSE;
++  }
+   return ARES_TRUE;
+ }
+ 
+diff --git a/deps/cares/src/lib/inet_net_pton.c b/deps/cares/src/lib/inet_net_pton.c
+index e1f76ef834..f60823023b 100644
+--- a/deps/cares/src/lib/inet_net_pton.c
++++ b/deps/cares/src/lib/inet_net_pton.c
+@@ -51,14 +51,15 @@ const struct ares_in6_addr ares_in6addr_any = { { { 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 
+ /*
+  * static int
+- * inet_net_pton_ipv4(src, dst, size)
++ * inet_net_pton_ipv4(src, dst, size, allow_cidr)
+  *      convert IPv4 network number from presentation to network format.
+- *      accepts hex octets, hex strings, decimal octets, and /CIDR.
+- *      "size" is in bytes and describes "dst".
++ *      accepts hex octets, hex strings, decimal octets, and, if
++ *      "allow_cidr" is true, /CIDR.  "size" is in bytes and describes "dst".
+  * return:
+  *      number of bits, either imputed classfully or specified with /CIDR,
+  *      or -1 if some failure occurred (check errno).  ENOENT means it was
+- *      not an IPv4 network specification.
++ *      not an IPv4 network specification (including a /CIDR suffix when
++ *      "allow_cidr" is false).
+  * note:
+  *      network byte order assumed.  this means 192.5.5.240/28 has
+  *      0b11110000 in its fourth octet.
+@@ -71,7 +72,7 @@ const struct ares_in6_addr ares_in6addr_any = { { { 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  *      Paul Vixie (ISC), June 1996
+  */
+ static int ares_inet_net_pton_ipv4(const char *src, unsigned char *dst,
+-                                   size_t size)
++                                   size_t size, ares_bool_t allow_cidr)
+ {
+   static const char    xdigits[] = "0123456789abcdef";
+   static const char    digits[]  = "0123456789";
+@@ -147,7 +148,8 @@ static int ares_inet_net_pton_ipv4(const char *src, unsigned char *dst,
+   }
+ 
+   bits = -1;
+-  if (ch == '/' && ares_isascii(src[0]) && ares_isdigit(src[0]) && dst > odst) {
++  if (allow_cidr && ch == '/' && ares_isascii(src[0]) && ares_isdigit(src[0]) &&
++      dst > odst) {
+     /* CIDR width specifier.  Nothing can follow it. */
+     ch   = *src++; /* Skip over the /. */
+     bits = 0;
+@@ -317,7 +319,7 @@ static int ares_inet_pton6(const char *src, unsigned char *dst)
+       continue;
+     }
+     if (ch == '.' && ((tp + NS_INADDRSZ) <= endp) &&
+-        ares_inet_net_pton_ipv4(curtok, tp, NS_INADDRSZ) > 0) {
++        ares_inet_net_pton_ipv4(curtok, tp, NS_INADDRSZ, ARES_FALSE) > 0) {
+       tp         += NS_INADDRSZ;
+       saw_xdigit  = 0;
+       break; /* '\0' was seen by inet_pton4(). */
+@@ -400,29 +402,23 @@ static int ares_inet_net_pton_ipv6(const char *src, unsigned char *dst,
+     SET_SOCKERRNO(EMSGSIZE);
+     return -1;
+   }
++  /* Only the first (bits+7)/8 bytes carry the network, zero the remainder of
++   * the caller's buffer so it never holds uninitialized data. */
++  memset(dst, 0, size);
+   memcpy(dst, &in6, bytes);
+   return (int)bits;
+ }
+ 
+-/*
+- * int
+- * inet_net_pton(af, src, dst, size)
+- *      convert network number from presentation to network format.
+- *      accepts hex octets, hex strings, decimal octets, and /CIDR.
+- *      "size" is in bytes and describes "dst".
+- * return:
+- *      number of bits, either imputed classfully or specified with /CIDR,
+- *      or -1 if some failure occurred (check errno).  ENOENT means it was
+- *      not a valid network specification.
++/* Parse a network, not an address.  See ares_inet_net_pton.h for the
++ * contract and how it differs from ares_inet_pton().
+  * author:
+  *      Paul Vixie (ISC), June 1996
+- *
+  */
+ int ares_inet_net_pton(int af, const char *src, void *dst, size_t size)
+ {
+   switch (af) {
+     case AF_INET:
+-      return ares_inet_net_pton_ipv4(src, dst, size);
++      return ares_inet_net_pton_ipv4(src, dst, size, ARES_TRUE);
+     case AF_INET6:
+       return ares_inet_net_pton_ipv6(src, dst, size);
+     default:
+@@ -430,22 +426,35 @@ int ares_inet_net_pton(int af, const char *src, void *dst, size_t size)
+   }
+ }
+ 
++/*
++ * int
++ * inet_pton(af, src, dst)
++ *      convert an address (not a network) from presentation to network
++ *      format, like POSIX inet_pton().  A "/bits" prefix length denotes a
++ *      prefix, not an address (RFC 4291 Section 2.3 vs. the address text
++ *      forms of Section 2.2), and is rejected; dst is always fully written
++ *      on success (4 bytes for AF_INET, 16 bytes for AF_INET6).
++ *      For a network with a prefix length, use ares_inet_net_pton().
++ * return:
++ *      1 on success, 0 if src is not a valid address for af (as POSIX
++ *      inet_pton() does for any unparsable input), or -1 with errno set to
++ *      EAFNOSUPPORT if af is not supported.
++ */
+ int ares_inet_pton(int af, const char *src, void *dst)
+ {
+-  int    result;
+-  size_t size;
++  int result;
+ 
+   if (af == AF_INET) {
+-    size = sizeof(struct in_addr);
++    result =
++      ares_inet_net_pton_ipv4(src, dst, sizeof(struct in_addr), ARES_FALSE);
+   } else if (af == AF_INET6) {
+-    size = sizeof(struct ares_in6_addr);
++    result = ares_inet_pton6(src, dst);
+   } else {
+     SET_SOCKERRNO(EAFNOSUPPORT);
+     return -1;
+   }
+-  result = ares_inet_net_pton(af, src, dst, size);
+-  if (result == -1 && SOCKERRNO == ENOENT) {
+-    return 0;
+-  }
+-  return (result > -1) ? 1 : -1;
++  /* Neither parser can fail for a system reason: any failure (ENOENT, or
++   * EMSGSIZE for too many IPv4 octets as in "1.2.3.4.5") means src is not a
++   * valid address. */
++  return (result > -1) ? 1 : 0;
+ }
+diff --git a/deps/cares/src/lib/legacy/ares_parse_a_reply.c b/deps/cares/src/lib/legacy/ares_parse_a_reply.c
+index 9fd4a07ac0..f494da3608 100644
+--- a/deps/cares/src/lib/legacy/ares_parse_a_reply.c
++++ b/deps/cares/src/lib/legacy/ares_parse_a_reply.c
+@@ -60,8 +60,11 @@ int ares_parse_a_reply(const unsigned char *abuf, int alen,
+   }
+ 
+   if (naddrttls) {
+-    req_naddrttls = (size_t)*naddrttls;
+-    *naddrttls    = 0;
++    /* A negative requested count would wrap to SIZE_MAX. */
++    if (*naddrttls > 0) {
++      req_naddrttls = (size_t)*naddrttls;
++    }
++    *naddrttls = 0;
+   }
+ 
+   memset(&ai, 0, sizeof(ai));
+diff --git a/deps/cares/src/lib/legacy/ares_parse_aaaa_reply.c b/deps/cares/src/lib/legacy/ares_parse_aaaa_reply.c
+index 4c177ec9cb..851b97cd0f 100644
+--- a/deps/cares/src/lib/legacy/ares_parse_aaaa_reply.c
++++ b/deps/cares/src/lib/legacy/ares_parse_aaaa_reply.c
+@@ -63,8 +63,11 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
+   }
+ 
+   if (naddrttls) {
+-    req_naddrttls = (size_t)*naddrttls;
+-    *naddrttls    = 0;
++    /* A negative requested count would wrap to SIZE_MAX. */
++    if (*naddrttls > 0) {
++      req_naddrttls = (size_t)*naddrttls;
++    }
++    *naddrttls = 0;
+   }
+ 
+   memset(&ai, 0, sizeof(ai));
+diff --git a/deps/cares/src/lib/legacy/ares_parse_uri_reply.c b/deps/cares/src/lib/legacy/ares_parse_uri_reply.c
+index 317e204d5d..ad3014d7a2 100644
+--- a/deps/cares/src/lib/legacy/ares_parse_uri_reply.c
++++ b/deps/cares/src/lib/legacy/ares_parse_uri_reply.c
+@@ -90,7 +90,7 @@ int ares_parse_uri_reply(const unsigned char *abuf, int alen_int,
+     uri_curr->priority = ares_dns_rr_get_u16(rr, ARES_RR_URI_PRIORITY);
+     uri_curr->weight   = ares_dns_rr_get_u16(rr, ARES_RR_URI_WEIGHT);
+     uri_curr->uri = ares_strdup(ares_dns_rr_get_str(rr, ARES_RR_URI_TARGET));
+-    uri_curr->ttl = (int)ares_dns_rr_get_ttl(rr);
++    uri_curr->ttl      = ares_dns_ttl_as_int(ares_dns_rr_get_ttl(rr));
+ 
+     if (uri_curr->uri == NULL) {
+       status = ARES_ENOMEM;
+diff --git a/deps/cares/src/lib/record/ares_dns_mapping.c b/deps/cares/src/lib/record/ares_dns_mapping.c
+index 38dedd438c..5c5fdddb22 100644
+--- a/deps/cares/src/lib/record/ares_dns_mapping.c
++++ b/deps/cares/src/lib/record/ares_dns_mapping.c
+@@ -132,6 +132,21 @@ ares_bool_t ares_dns_rec_allow_name_comp(ares_dns_rec_type_t type)
+   return ARES_FALSE;
+ }
+ 
++ares_bool_t ares_dns_rec_allow_name_comp_read(ares_dns_rec_type_t type)
++{
++  /* RFC3597 section 4 recommends decompressing these older RR types on
++   * receipt, even though their RDATA names must not be compressed on write.
++   * The other listed types (RP, AFSDB, RT, PX, NXT) are not implemented. */
++  switch (type) {
++    case ARES_REC_TYPE_SIG:
++    case ARES_REC_TYPE_SRV:
++    case ARES_REC_TYPE_NAPTR:
++      return ARES_TRUE;
++    default:
++      return ares_dns_rec_allow_name_comp(type);
++  }
++}
++
+ ares_bool_t ares_dns_class_isvalid(ares_dns_class_t    qclass,
+                                    ares_dns_rec_type_t type,
+                                    ares_bool_t         is_query)
+diff --git a/deps/cares/src/lib/record/ares_dns_name.c b/deps/cares/src/lib/record/ares_dns_name.c
+index ffcaf5e110..98db9932c9 100644
+--- a/deps/cares/src/lib/record/ares_dns_name.c
++++ b/deps/cares/src/lib/record/ares_dns_name.c
+@@ -620,7 +620,7 @@ ares_status_t ares_dns_name_parse(ares_buf_t *buf, char **name,
+        */
+       size_t offset = (size_t)((c & 0x3F) << 8);
+ 
+-      /* Some RR types (e.g. SRV) do not permit name compression within their
++      /* Some RR types (e.g. SVCB) do not permit name compression within their
+        * RDATA.  Reject a compression pointer when it is not allowed. */
+       if (!allow_compression) {
+         status = ARES_EBADNAME;
+diff --git a/deps/cares/src/lib/record/ares_dns_parse.c b/deps/cares/src/lib/record/ares_dns_parse.c
+index 9dc28e92d8..943e5cd23f 100644
+--- a/deps/cares/src/lib/record/ares_dns_parse.c
++++ b/deps/cares/src/lib/record/ares_dns_parse.c
+@@ -46,12 +46,9 @@ static ares_status_t ares_dns_parse_and_set_dns_name(ares_buf_t    *buf,
+ {
+   ares_status_t status;
+   char         *name = NULL;
+-  /* Only RR types defined in RFC1035 may use name compression within their
+-   * RDATA (RFC3597).  Reject compression pointers for any other type (e.g.
+-   * SRV per RFC2782) to match the write-side policy and avoid following
+-   * pointers that a non-understanding nameserver could not have rewritten. */
++  /* Receive-side exceptions are specified in RFC3597 section 4. */
+   ares_bool_t   allow_compression =
+-    ares_dns_rec_allow_name_comp(ares_dns_rr_get_type(rr));
++    ares_dns_rec_allow_name_comp_read(ares_dns_rr_get_type(rr));
+ 
+   status = ares_dns_name_parse(buf, &name, is_hostname, allow_compression);
+   if (status != ARES_SUCCESS) {
+diff --git a/deps/cares/src/lib/record/ares_dns_private.h b/deps/cares/src/lib/record/ares_dns_private.h
+index e8fd600d1d..359b03e8ca 100644
+--- a/deps/cares/src/lib/record/ares_dns_private.h
++++ b/deps/cares/src/lib/record/ares_dns_private.h
+@@ -29,6 +29,10 @@
+ ares_status_t        ares_dns_record_duplicate_ex(ares_dns_record_t      **dest,
+                                                   const ares_dns_record_t *src);
+ ares_bool_t          ares_dns_rec_allow_name_comp(ares_dns_rec_type_t type);
++/*! Whether an RR's RDATA names may be decompressed on receipt (RFC3597).
++ *  \param[in] type Record type.
++ *  \return ARES_TRUE if compressed RDATA names may be parsed. */
++ares_bool_t ares_dns_rec_allow_name_comp_read(ares_dns_rec_type_t type);
+ ares_bool_t          ares_dns_opcode_isvalid(ares_dns_opcode_t opcode);
+ ares_bool_t          ares_dns_rcode_isvalid(ares_dns_rcode_t rcode);
+ ares_bool_t          ares_dns_flags_arevalid(unsigned short flags);
+diff --git a/deps/cares/src/lib/record/ares_dns_write.c b/deps/cares/src/lib/record/ares_dns_write.c
+index 549017ffbc..3e42f337b1 100644
+--- a/deps/cares/src/lib/record/ares_dns_write.c
++++ b/deps/cares/src/lib/record/ares_dns_write.c
+@@ -1074,6 +1074,11 @@ static ares_status_t ares_dns_write_rr(const ares_dns_record_t *dnsrec,
+      * position */
+     end_length = ares_buf_len(buf);
+     rdlength   = end_length - pos_len - 2;
++    if (rdlength > 65535) {
++      /* RDATA cannot be framed by the 16-bit rdlength; writing the truncated
++       * length would emit a structurally corrupt message. */
++      return ARES_EBADQUERY;
++    }
+ 
+     status = ares_buf_set_length(buf, pos_len);
+     if (status != ARES_SUCCESS) {
+@@ -1132,6 +1137,13 @@ ares_status_t ares_dns_write_buf(const ares_dns_record_t *dnsrec,
+     goto done;
+   }
+ 
++  /* Maximum DNS message size is 64k, even over TCP; ares_dns_parse_buf()
++   * rejects anything larger */
++  if (ares_buf_len(buf) - orig_len > 65535) {
++    status = ARES_EBADQUERY;
++    goto done;
++  }
++
+ done:
+   ares_llist_destroy(namelist);
+   if (status != ARES_SUCCESS) {
+@@ -1164,15 +1176,11 @@ ares_status_t ares_dns_write_buf_tcp(const ares_dns_record_t *dnsrec,
+   /* Write message */
+   status = ares_dns_write_buf(dnsrec, buf);
+   if (status != ARES_SUCCESS) {
+-    goto done; /* LCOV_EXCL_LINE: OutOfMemory */
++    goto done;
+   }
+ 
+   len     = ares_buf_len(buf);
+   msg_len = len - orig_len - 2;
+-  if (msg_len > 65535) {
+-    status = ARES_EBADQUERY;
+-    goto done;
+-  }
+ 
+   /* Now we need to overwrite the length, so we jump back to the original
+    * message length, overwrite the section and jump back */
+diff --git a/deps/cares/src/lib/str/ares_buf.c b/deps/cares/src/lib/str/ares_buf.c
+index 25f0372e4d..3e08dd21e8 100644
+--- a/deps/cares/src/lib/str/ares_buf.c
++++ b/deps/cares/src/lib/str/ares_buf.c
+@@ -1462,6 +1462,11 @@ ares_status_t ares_buf_load_file(const char *filename, ares_buf_t *buf)
+     }
+   }
+ 
++  if (setvbuf(fp, NULL, _IONBF, 0) != 0) {
++    status = ARES_EFILE; /* LCOV_EXCL_LINE: DefensiveCoding */
++    goto done;           /* LCOV_EXCL_LINE: DefensiveCoding */
++  }
++
+   /* Get length portably, fstat() is POSIX, not C */
+   if (fseek(fp, 0, SEEK_END) != 0) {
+     status = ARES_EFILE; /* LCOV_EXCL_LINE: DefensiveCoding */
+diff --git a/deps/cares/src/lib/util/ares_math.c b/deps/cares/src/lib/util/ares_math.c
+index 3513146c3d..06b0d07ff1 100644
+--- a/deps/cares/src/lib/util/ares_math.c
++++ b/deps/cares/src/lib/util/ares_math.c
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include "ares_private.h"
++#include <limits.h>
+ 
+ /* Uses public domain code snippets from
+  * http://graphics.stanford.edu/~seander/bithacks.html */
+@@ -165,3 +166,8 @@ ares_bool_t ares_size_t_mul_overflow(size_t a, size_t b, size_t *res)
+   *res = a * b;
+   return ARES_FALSE;
+ }
++
++int ares_dns_ttl_as_int(unsigned int ttl)
++{
++  return (ttl > INT_MAX) ? INT_MAX : (int)ttl;
++}
+diff --git a/deps/cares/src/lib/util/ares_math.h b/deps/cares/src/lib/util/ares_math.h
+index 76e1e48837..8bd18b1819 100644
+--- a/deps/cares/src/lib/util/ares_math.h
++++ b/deps/cares/src/lib/util/ares_math.h
+@@ -50,6 +50,18 @@ size_t        ares_count_digits(size_t n);
+ size_t        ares_count_hexdigits(size_t n);
+ unsigned char ares_count_bits_u8(unsigned char x);
+ 
++/*! Convert a DNS record TTL to the signed int used by the public API
++ *  structures, saturating at INT_MAX instead of wrapping negative.
++ *
++ *  RFC 8767 section 4 (which updates RFC 2181 section 8) defines the TTL as
++ *  an unsigned 32-bit number, so a value with the high bit set is a large
++ *  positive TTL, not a negative one.
++ *
++ *  \param[in] ttl  TTL as received on the wire
++ *  \return TTL clamped to the range 0 to INT_MAX
++ */
++int           ares_dns_ttl_as_int(unsigned int ttl);
++
+ /*! Multiply two size_t values, checking for overflow.  On success writes the
+  *  product to *res and returns ARES_FALSE.  On overflow returns ARES_TRUE and
+  *  leaves *res untouched. */
+diff --git a/deps/cares/src/lib/util/ares_uri.c b/deps/cares/src/lib/util/ares_uri.c
+index 97f3f3f542..f98884c349 100644
+--- a/deps/cares/src/lib/util/ares_uri.c
++++ b/deps/cares/src/lib/util/ares_uri.c
+@@ -1137,6 +1137,11 @@ static ares_status_t ares_uri_parse_userinfo(ares_uri_t *uri, ares_buf_t *buf)
+ 
+     /* Consume : */
+     ares_buf_consume(buf, 1);
++  } else {
++    /* The ':' is absent or belongs to the host:port that follows the '@', but
++     * the search above has already consumed up to it, so rewind to the start
++     * of the userinfo */
++    ares_buf_tag_rollback(buf);
+   }
+ 
+   ares_buf_tag(buf);

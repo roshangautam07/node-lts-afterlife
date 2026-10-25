@@ -1,0 +1,367 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: notvivek12 <vivekjoshi82015@gmail.com>
+Date: Tue, 3 Feb 2026 22:21:35 +0530
+Subject: [PATCH 66/74] dns: fix Windows SRV ECONNREFUSED by adjusting c-ares
+ fallback detection
+
+Newer c-ares versions set tcp_port/udp_port to 53 instead of 0,
+which caused the loopback detection to fail. This fix:
+
+- Removes the port check from loopback detection
+- Adds IPv6 loopback (::1) support
+- Calls EnsureServers() before each DNS query
+
+PR-URL: https://github.com/nodejs/node/pull/61453
+Reviewed-By: Anna Henningsen <anna@addaleax.net>
+(cherry picked from commit 2dc99d2771c78391b3d6eff7812f530d8049c520)
+---
+ src/cares_wrap.cc                             |  28 +++-
+ test/common/dns.js                            |  10 ++
+ .../test-dns-resolvesrv-econnrefused.js       | 147 ++++++++++++++++++
+ test/parallel/test-dns-resolvesrv.js          | 102 ++++++++++++
+ 4 files changed, 281 insertions(+), 6 deletions(-)
+ create mode 100644 test/parallel/test-dns-resolvesrv-econnrefused.js
+ create mode 100644 test/parallel/test-dns-resolvesrv.js
+
+diff --git a/src/cares_wrap.cc b/src/cares_wrap.cc
+index e7e61c0ab7..91caa5496c 100644
+--- a/src/cares_wrap.cc
++++ b/src/cares_wrap.cc
+@@ -813,19 +813,31 @@ void ChannelWrap::EnsureServers() {
+ 
+   ares_get_servers_ports(channel_, &servers);
+ 
+-  /* if no server or multi-servers, ignore */
++  /* if no server, ignore */
+   if (servers == nullptr) return;
++
++  /* if multi-servers, mark as non-default and ignore */
+   if (servers->next != nullptr) {
+     ares_free_data(servers);
+     is_servers_default_ = false;
+     return;
+   }
+ 
+-  /* if the only server is not 127.0.0.1, ignore */
+-  if (servers[0].family != AF_INET ||
+-      servers[0].addr.addr4.s_addr != htonl(INADDR_LOOPBACK) ||
+-      servers[0].tcp_port != 0 ||
+-      servers[0].udp_port != 0) {
++  /* Check if the only server is a loopback address (IPv4 127.0.0.1 or IPv6
++   * ::1). Newer c-ares versions may set tcp_port/udp_port to 53 instead of 0,
++   * so we no longer check port values. */
++  bool is_loopback = false;
++  if (servers[0].family == AF_INET) {
++    is_loopback = (servers[0].addr.addr4.s_addr == htonl(INADDR_LOOPBACK));
++  } else if (servers[0].family == AF_INET6) {
++    static const unsigned char kIPv6Loopback[16] = {
++        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
++    is_loopback =
++        (memcmp(&servers[0].addr.addr6, kIPv6Loopback, sizeof(kIPv6Loopback)) ==
++         0);
++  }
++
++  if (!is_loopback) {
+     ares_free_data(servers);
+     is_servers_default_ = false;
+     return;
+@@ -1436,6 +1448,10 @@ static void Query(const FunctionCallbackInfo<Value>& args) {
+   node::Utf8Value utf8name(env->isolate(), string);
+   auto plain_name = utf8name.ToStringView();
+   std::string name = ada::idna::to_ascii(plain_name);
++
++  // Ensure c-ares did not fall back to loopback resolver.
++  channel->EnsureServers();
++
+   channel->ModifyActivityQueryCount(1);
+   int err = wrap->Send(name.c_str());
+   if (err) {
+diff --git a/test/common/dns.js b/test/common/dns.js
+index 2ee4bff518..ed0696ae89 100644
+--- a/test/common/dns.js
++++ b/test/common/dns.js
+@@ -12,6 +12,7 @@ const types = {
+   PTR: 12,
+   MX: 15,
+   TXT: 16,
++  SRV: 33,
+   ANY: 255,
+   CAA: 257,
+ };
+@@ -278,6 +279,15 @@ function writeDNSPacket(parsed) {
+         buffers.push(Buffer.from('issue' + rr.issue));
+         break;
+       }
++      case 'SRV':
++      {
++        // SRV record format: priority (2) + weight (2) + port (2) + target
++        const target = writeDomainName(rr.name);
++        rdLengthBuf[0] = 6 + target.length;
++        buffers.push(new Uint16Array([rr.priority, rr.weight, rr.port]));
++        buffers.push(target);
++        break;
++      }
+       default:
+         throw new Error(`Unknown RR type ${rr.type}`);
+     }
+diff --git a/test/parallel/test-dns-resolvesrv-econnrefused.js b/test/parallel/test-dns-resolvesrv-econnrefused.js
+new file mode 100644
+index 0000000000..a0acf63c6f
+--- /dev/null
++++ b/test/parallel/test-dns-resolvesrv-econnrefused.js
+@@ -0,0 +1,147 @@
++'use strict';
++// Regression test for SRV record resolution returning ECONNREFUSED.
++//
++// This test verifies that dns.resolveSrv() properly handles SRV queries
++// and doesn't incorrectly return ECONNREFUSED errors when DNS servers
++// are reachable but the query format or handling has issues.
++//
++// Background: In certain Node.js versions, SRV queries could fail with
++// ECONNREFUSED even when the DNS server was accessible, affecting
++// applications using MongoDB Atlas (mongodb+srv://) and other services
++// that rely on SRV record discovery.
++
++const common = require('../common');
++const dnstools = require('../common/dns');
++const dns = require('dns');
++const dnsPromises = dns.promises;
++const assert = require('assert');
++const dgram = require('dgram');
++
++// Test 1: Basic SRV resolution should succeed, not return ECONNREFUSED
++{
++  const server = dgram.createSocket('udp4');
++  const srvRecord = {
++    type: 'SRV',
++    name: 'mongodb-server.cluster0.example.net',
++    port: 27017,
++    priority: 0,
++    weight: 1,
++    ttl: 60,
++  };
++
++  server.on('message', common.mustCall((msg, { address, port }) => {
++    const parsed = dnstools.parseDNSPacket(msg);
++    const domain = parsed.questions[0].domain;
++
++    server.send(dnstools.writeDNSPacket({
++      id: parsed.id,
++      questions: parsed.questions,
++      answers: [Object.assign({ domain }, srvRecord)],
++    }), port, address);
++  }));
++
++  server.bind(0, common.mustCall(async () => {
++    const { port } = server.address();
++    const resolver = new dnsPromises.Resolver();
++    resolver.setServers([`127.0.0.1:${port}`]);
++
++    try {
++      const result = await resolver.resolveSrv(
++        '_mongodb._tcp.cluster0.example.net'
++      );
++
++      // Should NOT throw ECONNREFUSED
++      assert.ok(Array.isArray(result));
++      assert.strictEqual(result.length, 1);
++      assert.strictEqual(result[0].name, 'mongodb-server.cluster0.example.net');
++      assert.strictEqual(result[0].port, 27017);
++      assert.strictEqual(result[0].priority, 0);
++      assert.strictEqual(result[0].weight, 1);
++    } catch (err) {
++      // This is the regression: should NOT get ECONNREFUSED
++      assert.notStrictEqual(err.code, 'ECONNREFUSED');
++      throw err;
++    } finally {
++      server.close();
++    }
++  }));
++}
++
++// Test 2: Multiple SRV records (common for MongoDB Atlas clusters)
++{
++  const server = dgram.createSocket('udp4');
++  const srvRecords = [
++    { type: 'SRV', name: 'shard-00-00.cluster.mongodb.net', port: 27017, priority: 0, weight: 1, ttl: 60 },
++    { type: 'SRV', name: 'shard-00-01.cluster.mongodb.net', port: 27017, priority: 0, weight: 1, ttl: 60 },
++    { type: 'SRV', name: 'shard-00-02.cluster.mongodb.net', port: 27017, priority: 0, weight: 1, ttl: 60 },
++  ];
++
++  server.on('message', common.mustCall((msg, { address, port }) => {
++    const parsed = dnstools.parseDNSPacket(msg);
++    const domain = parsed.questions[0].domain;
++
++    server.send(dnstools.writeDNSPacket({
++      id: parsed.id,
++      questions: parsed.questions,
++      answers: srvRecords.map((r) => Object.assign({ domain }, r)),
++    }), port, address);
++  }));
++
++  server.bind(0, common.mustCall(async () => {
++    const { port } = server.address();
++    const resolver = new dnsPromises.Resolver();
++    resolver.setServers([`127.0.0.1:${port}`]);
++
++    const result = await resolver.resolveSrv('_mongodb._tcp.cluster.mongodb.net');
++
++    assert.strictEqual(result.length, 3);
++
++    const names = result.map((r) => r.name).sort();
++    assert.deepStrictEqual(names, [
++      'shard-00-00.cluster.mongodb.net',
++      'shard-00-01.cluster.mongodb.net',
++      'shard-00-02.cluster.mongodb.net',
++    ]);
++
++    server.close();
++  }));
++}
++
++// Test 3: Callback-based API should also work
++{
++  const server = dgram.createSocket('udp4');
++
++  server.on('message', common.mustCall((msg, { address, port }) => {
++    const parsed = dnstools.parseDNSPacket(msg);
++    const domain = parsed.questions[0].domain;
++
++    server.send(dnstools.writeDNSPacket({
++      id: parsed.id,
++      questions: parsed.questions,
++      answers: [{
++        domain,
++        type: 'SRV',
++        name: 'service.example.com',
++        port: 443,
++        priority: 10,
++        weight: 5,
++        ttl: 120,
++      }],
++    }), port, address);
++  }));
++
++  server.bind(0, common.mustCall(() => {
++    const { port } = server.address();
++    const resolver = new dns.Resolver();
++    resolver.setServers([`127.0.0.1:${port}`]);
++
++    resolver.resolveSrv('_https._tcp.example.com', common.mustSucceed((result) => {
++      assert.strictEqual(result.length, 1);
++      assert.strictEqual(result[0].name, 'service.example.com');
++      assert.strictEqual(result[0].port, 443);
++      assert.strictEqual(result[0].priority, 10);
++      assert.strictEqual(result[0].weight, 5);
++      server.close();
++    }));
++  }));
++}
+diff --git a/test/parallel/test-dns-resolvesrv.js b/test/parallel/test-dns-resolvesrv.js
+new file mode 100644
+index 0000000000..2cdd7b93df
+--- /dev/null
++++ b/test/parallel/test-dns-resolvesrv.js
+@@ -0,0 +1,102 @@
++'use strict';
++// Regression test for dns.resolveSrv() functionality.
++// This test ensures SRV record resolution works correctly, which is
++// critical for services like MongoDB Atlas that use SRV records for
++// connection discovery (mongodb+srv:// URIs).
++//
++// Related issue: dns.resolveSrv() returning ECONNREFUSED instead of
++// properly resolving SRV records.
++
++const common = require('../common');
++const dnstools = require('../common/dns');
++const dns = require('dns');
++const dnsPromises = dns.promises;
++const assert = require('assert');
++const dgram = require('dgram');
++
++const srvRecords = [
++  {
++    type: 'SRV',
++    name: 'server1.example.org',
++    port: 27017,
++    priority: 0,
++    weight: 5,
++    ttl: 300,
++  },
++  {
++    type: 'SRV',
++    name: 'server2.example.org',
++    port: 27017,
++    priority: 0,
++    weight: 5,
++    ttl: 300,
++  },
++  {
++    type: 'SRV',
++    name: 'server3.example.org',
++    port: 27017,
++    priority: 1,
++    weight: 10,
++    ttl: 300,
++  },
++];
++
++const server = dgram.createSocket('udp4');
++
++server.on('message', common.mustCall((msg, { address, port }) => {
++  const parsed = dnstools.parseDNSPacket(msg);
++  const domain = parsed.questions[0].domain;
++  assert.strictEqual(domain, '_mongodb._tcp.cluster0.example.org');
++
++  server.send(dnstools.writeDNSPacket({
++    id: parsed.id,
++    questions: parsed.questions,
++    answers: srvRecords.map((record) => Object.assign({ domain }, record)),
++  }), port, address);
++}, 2));  // Called twice: once for callback, once for promises
++
++server.bind(0, common.mustCall(async () => {
++  const address = server.address();
++  const resolver = new dns.Resolver();
++  const resolverPromises = new dnsPromises.Resolver();
++
++  resolver.setServers([`127.0.0.1:${address.port}`]);
++  resolverPromises.setServers([`127.0.0.1:${address.port}`]);
++
++  function validateResult(result) {
++    assert.ok(Array.isArray(result), 'Result should be an array');
++    assert.strictEqual(result.length, 3);
++
++    for (const record of result) {
++      assert.strictEqual(typeof record, 'object');
++      assert.strictEqual(typeof record.name, 'string');
++      assert.strictEqual(typeof record.port, 'number');
++      assert.strictEqual(typeof record.priority, 'number');
++      assert.strictEqual(typeof record.weight, 'number');
++      assert.strictEqual(record.port, 27017);
++    }
++
++    // Verify we got all expected server names
++    const names = result.map((r) => r.name).sort();
++    assert.deepStrictEqual(names, [
++      'server1.example.org',
++      'server2.example.org',
++      'server3.example.org',
++    ]);
++  }
++
++  // Test promises API
++  const promiseResult = await resolverPromises.resolveSrv(
++    '_mongodb._tcp.cluster0.example.org'
++  );
++  validateResult(promiseResult);
++
++  // Test callback API
++  resolver.resolveSrv(
++    '_mongodb._tcp.cluster0.example.org',
++    common.mustSucceed((result) => {
++      validateResult(result);
++      server.close();
++    })
++  );
++}));

@@ -1,0 +1,208 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: RafaelGSS <rafael.nunu@hotmail.com>
+Date: Tue, 17 Jun 2025 17:52:05 -0300
+Subject: [PATCH 04/74] lib: handle all windows reserved driver name
+
+Signed-off-by: RafaelGSS <rafael.nunu@hotmail.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/721
+Refs: https://hackerone.com/reports/3160912
+CVE-ID: CVE-2025-27210
+(cherry picked from commit db7b93fcef75ebffbeac42cb614190f8e4d1dd08)
+---
+ lib/path.js                                   | 43 ++++++--
+ .../test-path-win32-normalize-device-names.js | 98 +++++++++++++++++++
+ 2 files changed, 131 insertions(+), 10 deletions(-)
+ create mode 100644 test/parallel/test-path-win32-normalize-device-names.js
+
+diff --git a/lib/path.js b/lib/path.js
+index 9838e6d2c5..b9fddffacf 100644
+--- a/lib/path.js
++++ b/lib/path.js
+@@ -22,6 +22,7 @@
+ 'use strict';
+ 
+ const {
++  ArrayPrototypeIncludes,
+   FunctionPrototypeBind,
+   StringPrototypeCharCodeAt,
+   StringPrototypeIncludes,
+@@ -30,6 +31,7 @@ const {
+   StringPrototypeReplace,
+   StringPrototypeSlice,
+   StringPrototypeToLowerCase,
++  StringPrototypeToUpperCase,
+ } = primordials;
+ 
+ const {
+@@ -58,6 +60,17 @@ function isPosixPathSeparator(code) {
+   return code === CHAR_FORWARD_SLASH;
+ }
+ 
++const WINDOWS_RESERVED_NAMES = [
++  'CON', 'PRN', 'AUX', 'NUL',
++  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
++  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
++];
++
++function isWindowsReservedName(path, colonIndex) {
++  const devicePart = StringPrototypeToUpperCase(StringPrototypeSlice(path, 0, colonIndex));
++  return ArrayPrototypeIncludes(WINDOWS_RESERVED_NAMES, devicePart);
++}
++
+ function isWindowsDeviceRoot(code) {
+   return (code >= CHAR_UPPERCASE_A && code <= CHAR_UPPERCASE_Z) ||
+          (code >= CHAR_LOWERCASE_A && code <= CHAR_LOWERCASE_Z);
+@@ -368,16 +381,21 @@ const win32 = {
+       } else {
+         rootEnd = 1;
+       }
+-    } else if (isWindowsDeviceRoot(code) &&
+-               StringPrototypeCharCodeAt(path, 1) === CHAR_COLON) {
+-      // Possible device root
+-      device = StringPrototypeSlice(path, 0, 2);
+-      rootEnd = 2;
+-      if (len > 2 && isPathSeparator(StringPrototypeCharCodeAt(path, 2))) {
+-        // Treat separator following drive name as an absolute path
+-        // indicator
+-        isAbsolute = true;
+-        rootEnd = 3;
++    } else {
++      const colonIndex = StringPrototypeIndexOf(path, ':');
++      if (colonIndex > 0) {
++        if (isWindowsDeviceRoot(code) && colonIndex === 1) {
++          device = StringPrototypeSlice(path, 0, 2);
++          rootEnd = 2;
++          if (len > 2 && isPathSeparator(StringPrototypeCharCodeAt(path, 2))) {
++            isAbsolute = true;
++            rootEnd = 3;
++          }
++        } else if (isWindowsReservedName(path, colonIndex)) {
++          device = StringPrototypeSlice(path, 0, colonIndex + 1);
++          rootEnd = colonIndex + 1;
++
++        }
+       }
+     }
+ 
+@@ -401,12 +419,17 @@ const win32 = {
+         return `.\\${tail}`;
+       }
+       let index = StringPrototypeIndexOf(path, ':');
++
+       do {
+         if (index === len - 1 || isPathSeparator(StringPrototypeCharCodeAt(path, index + 1))) {
+           return `.\\${tail}`;
+         }
+       } while ((index = StringPrototypeIndexOf(path, ':', index + 1)) !== -1);
+     }
++    const colonIndex = StringPrototypeIndexOf(path, ':');
++    if (isWindowsReservedName(path, colonIndex)) {
++      return `.\\${device ?? ''}${tail}`;
++    }
+     if (device === undefined) {
+       return isAbsolute ? `\\${tail}` : tail;
+     }
+diff --git a/test/parallel/test-path-win32-normalize-device-names.js b/test/parallel/test-path-win32-normalize-device-names.js
+new file mode 100644
+index 0000000000..927bc5cec8
+--- /dev/null
++++ b/test/parallel/test-path-win32-normalize-device-names.js
+@@ -0,0 +1,98 @@
++'use strict';
++
++const common = require('../common');
++const assert = require('assert');
++const path = require('path');
++
++if (!common.isWindows) {
++  common.skip('Windows only');
++}
++
++const normalizeDeviceNameTests = [
++  { input: 'CON', expected: 'CON' },
++  { input: 'con', expected: 'con' },
++  { input: 'CON:', expected: '.\\CON:.' },
++  { input: 'con:', expected: '.\\con:.' },
++  { input: 'CON:.', expected: '.\\CON:.' },
++  { input: 'coN:', expected: '.\\coN:.' },
++  { input: 'LPT9.foo', expected: 'LPT9.foo' },
++  { input: 'COM9:', expected: '.\\COM9:.' },
++  { input: 'COM9.', expected: '.\\COM9.' },
++  { input: 'C:COM9', expected: 'C:COM9' },
++  { input: 'C:\\COM9', expected: 'C:\\COM9' },
++  { input: 'CON:./foo', expected: '.\\CON:foo' },
++  { input: 'CON:/foo', expected: '.\\CON:foo' },
++  { input: 'CON:../foo', expected: '.\\CON:..\\foo' },
++  { input: 'CON:/../foo', expected: '.\\CON:..\\foo' },
++  { input: 'CON:./././foo', expected: '.\\CON:foo' },
++  { input: 'CON:..', expected: '.\\CON:..' },
++  { input: 'CON:..\\', expected: '.\\CON:..\\' },
++  { input: 'CON:..\\..', expected: '.\\CON:..\\..' },
++  { input: 'CON:..\\..\\', expected: '.\\CON:..\\..\\' },
++  { input: 'CON:..\\..\\foo', expected: '.\\CON:..\\..\\foo' },
++  { input: 'CON:..\\..\\foo\\', expected: '.\\CON:..\\..\\foo\\' },
++  { input: 'CON:..\\..\\foo\\bar', expected: '.\\CON:..\\..\\foo\\bar' },
++  { input: 'CON:..\\..\\foo\\bar\\', expected: '.\\CON:..\\..\\foo\\bar\\' },
++  { input: 'COM1:a:b:c', expected: '.\\COM1:a:b:c' },
++  { input: 'COM1:a:b:c/', expected: '.\\COM1:a:b:c\\' },
++  { input: 'c:lpt1', expected: 'c:lpt1' },
++  { input: 'c:\\lpt1', expected: 'c:\\lpt1' },
++
++  // Reserved device names with path traversal
++  { input: 'CON:.\\..\\..\\foo', expected: '.\\CON:..\\..\\foo' },
++  { input: 'PRN:.\\..\\bar', expected: '.\\PRN:..\\bar' },
++  { input: 'AUX:/../../baz', expected: '.\\AUX:..\\..\\baz' },
++
++  { input: 'COM1:', expected: '.\\COM1:.' },
++  { input: 'COM9:', expected: '.\\COM9:.' },
++  { input: 'COM1:.\\..\\..\\foo', expected: '.\\COM1:..\\..\\foo' },
++  { input: 'LPT1:', expected: '.\\LPT1:.' },
++  { input: 'LPT9:', expected: '.\\LPT9:.' },
++  { input: 'LPT1:.\\..\\..\\foo', expected: '.\\LPT1:..\\..\\foo' },
++  { input: 'LpT5:/another/path', expected: '.\\LpT5:another\\path' },
++
++  { input: 'C:\\foo', expected: 'C:\\foo' },
++  { input: 'D:bar', expected: 'D:bar' },
++
++  { input: 'CON', expected: 'CON' },
++  { input: 'CON.TXT', expected: 'CON.TXT' },
++  { input: 'COM10:', expected: '.\\COM10:' },
++  { input: 'LPT10:', expected: '.\\LPT10:' },
++  { input: 'CONNINGTOWER:', expected: '.\\CONNINGTOWER:' },
++  { input: 'AUXILIARYDEVICE:', expected: '.\\AUXILIARYDEVICE:' },
++  { input: 'NULLED:', expected: '.\\NULLED:' },
++  { input: 'PRNINTER:', expected: '.\\PRNINTER:' },
++
++  { input: 'CON:\\..\\..\\windows\\system32', expected: '.\\CON:..\\..\\windows\\system32' },
++  { input: 'PRN:.././../etc/passwd', expected: '.\\PRN:..\\..\\etc\\passwd' },
++
++  // Test with trailing slashes
++  { input: 'CON:\\', expected: '.\\CON:.\\' },
++  { input: 'COM1:\\foo\\bar\\', expected: '.\\COM1:foo\\bar\\' },
++
++  // Test cases from original vulnerability reports or similar scenarios
++  { input: 'COM1:.\\..\\..\\foo.js', expected: '.\\COM1:..\\..\\foo.js' },
++  { input: 'LPT1:.\\..\\..\\another.txt', expected: '.\\LPT1:..\\..\\another.txt' },
++
++  // Paths with device names not at the beginning
++  { input: 'C:\\CON', expected: 'C:\\CON' },
++  { input: 'C:\\path\\to\\COM1:', expected: 'C:\\path\\to\\COM1:' },
++
++  // Device name followed by multiple colons
++  { input: 'CON::', expected: '.\\CON::' },
++  { input: 'COM1:::foo', expected: '.\\COM1:::foo' },
++
++  // Device name with mixed path separators
++  { input: 'AUX:/foo\\bar/baz', expected: '.\\AUX:foo\\bar\\baz' },
++];
++
++for (const { input, expected } of normalizeDeviceNameTests) {
++  const actual = path.win32.normalize(input);
++  assert.strictEqual(actual, expected,
++                     `path.win32.normalize(${JSON.stringify(input)}) === ${JSON.stringify(expected)}, but got ${JSON.stringify(actual)}`);
++}
++
++assert.strictEqual(path.win32.normalize('CON:foo/../bar'), '.\\CON:bar');
++
++// This should NOT be prefixed because 'c:' is treated as a drive letter.
++assert.strictEqual(path.win32.normalize('c:COM1:'), 'c:COM1:');

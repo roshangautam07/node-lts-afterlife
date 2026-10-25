@@ -1,0 +1,420 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Tue, 3 Jun 2025 11:09:40 +0200
+Subject: [PATCH 40/60] http2: remove support for priority signaling
+
+Signed-off-by: Matteo Collina <hello@matteocollina.com>
+Co-authored-by: Antoine du Hamel <duhamelantoine1995@gmail.com>
+Refs: https://datatracker.ietf.org/doc/html/rfc9113#section-5.3.1
+PR-URL: https://github.com/nodejs/node/pull/58293
+Backport-PR-URL: https://github.com/nodejs/node/pull/63195
+Reviewed-By: Marco Ippolito <marcoippolito54@gmail.com>
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+Reviewed-By: Rafael Gonzaga <rafael.nunu@hotmail.com>
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+(cherry picked from commit ea5dc6b529b274b8835ea76951535d07d2349495)
+---
+ doc/api/deprecations.md                       |  8 ++-
+ doc/api/http2.md                              | 41 +++++--------
+ lib/internal/http2/core.js                    | 61 ++++++-------------
+ lib/internal/util.js                          | 12 ++++
+ ...st-http2-client-priority-before-connect.js |  5 ++
+ ...est-http2-client-request-options-errors.js |  1 -
+ .../test-http2-client-set-priority.js         |  8 ++-
+ test/parallel/test-http2-priority-cycle-.js   |  5 ++
+ test/parallel/test-http2-priority-event.js    | 19 +++---
+ ...est-http2-server-stream-session-destroy.js |  5 ++
+ 10 files changed, 81 insertions(+), 84 deletions(-)
+
+diff --git a/doc/api/deprecations.md b/doc/api/deprecations.md
+index d6507c9b29..b879c3e726 100644
+--- a/doc/api/deprecations.md
++++ b/doc/api/deprecations.md
+@@ -3630,15 +3630,17 @@ an internal nodejs implementation rather than a public facing API, use `node:str
+ 
+ <!-- YAML
+ changes:
++  - version: REPLACEME
++    pr-url: https://github.com/nodejs/node/pull/58293
++    description: End-of-Life.
+   - version: v20.19.6
+     pr-url: https://github.com/nodejs/node/pull/58313
+     description: Documentation-only deprecation.
+ -->
+ 
+-Type: Documentation-only
++Type: End-of-Life
+ 
+-The support for priority signaling has been deprecated in the [RFC 9113][], and
+-will be removed in future versions of Node.js.
++The support for priority signaling has been removed following its deprecation in the [RFC 9113][].
+ 
+ <!-- md-lint skip-deprecation DEP0195 -->
+ 
+diff --git a/doc/api/http2.md b/doc/api/http2.md
+index 34a7ab820c..ab44b24d90 100644
+--- a/doc/api/http2.md
++++ b/doc/api/http2.md
+@@ -1072,6 +1072,10 @@ The `'origin'` event is only emitted when using a secure TLS connection.
+ <!-- YAML
+ added: v8.4.0
+ changes:
++  - version: REPLACEME
++    pr-url: https://github.com/nodejs/node/pull/58293
++    description: The `weight` option is now ignored, setting it will trigger a
++                 runtime warning.
+   - version: v20.19.6
+     pr-url: https://github.com/nodejs/node/pull/58313
+     description: Following the deprecation of priority signaling as of RFC 9113,
+@@ -1090,10 +1094,6 @@ changes:
+     **Default:** `false`.
+   * `parent` {number} Specifies the numeric identifier of a stream the newly
+     created stream is dependent on.
+-  * `weight` {number} Specifies the relative dependency of a stream in relation
+-    to other streams with the same `parent`. The value is a number between `1`
+-    and `256` (inclusive). This has been **deprecated** in [RFC 9113][], and
+-    support for it will be removed in future versions of Node.js.
+   * `waitForTrailers` {boolean} When `true`, the `Http2Stream` will emit the
+     `'wantTrailers'` event after the final `DATA` frame has been sent.
+   * `signal` {AbortSignal} An AbortSignal that may be used to abort an ongoing
+@@ -1464,25 +1464,17 @@ numeric stream identifier.
+ <!-- YAML
+ added: v8.4.0
+ deprecated: v20.19.6
++changes:
++  - version: REPLACEME
++    pr-url: https://github.com/nodejs/node/pull/58293
++    description: This method no longer sets the priority of the stream. Using it
++                 now triggers a runtime warning.
+ -->
+ 
+ > Stability: 0 - Deprecated: support for priority signaling has been deprecated
+ > in the [RFC 9113][] and is no longer supported in Node.js.
+ 
+-* `options` {Object}
+-  * `exclusive` {boolean} When `true` and `parent` identifies a parent Stream,
+-    this stream is made the sole direct dependency of the parent, with
+-    all other existing dependents made a dependent of this stream. **Default:**
+-    `false`.
+-  * `parent` {number} Specifies the numeric identifier of a stream this stream
+-    is dependent on.
+-  * `weight` {number} Specifies the relative dependency of a stream in relation
+-    to other streams with the same `parent`. The value is a number between `1`
+-    and `256` (inclusive).
+-  * `silent` {boolean} When `true`, changes the priority locally without
+-    sending a `PRIORITY` frame to the connected peer.
+-
+-Updates the priority for this `Http2Stream` instance.
++Empty method, only there to maintain some backward compatibility.
+ 
+ #### `http2stream.rstCode`
+ 
+@@ -1579,6 +1571,10 @@ req.setTimeout(5000, () => req.close(NGHTTP2_CANCEL));
+ <!-- YAML
+ added: v8.4.0
+ changes:
++  - version: REPLACEME
++    pr-url: https://github.com/nodejs/node/pull/58293
++    description: The `state.weight` property is now always set to 16 and
++                 `sumDependencyWeight` is always set to 0.
+   - version: v20.19.6
+     pr-url: https://github.com/nodejs/node/pull/58313
+     description: Following the deprecation of priority signaling as of RFC 9113,
+@@ -1596,13 +1592,8 @@ Provides miscellaneous information about the current state of the
+   * `localClose` {number} `1` if this `Http2Stream` has been closed locally.
+   * `remoteClose` {number} `1` if this `Http2Stream` has been closed
+     remotely.
+-  * `sumDependencyWeight` {number} The sum weight of all `Http2Stream`
+-    instances that depend on this `Http2Stream` as specified using
+-    `PRIORITY` frames. This has been **deprecated** in [RFC 9113][], and
+-    support for it will be removed in future versions of Node.js.
+-  * `weight` {number} The priority weight of this `Http2Stream`. This has been
+-    **deprecated** in [RFC 9113][], and support for it will be removed in future
+-    versions of Node.js.
++  * `sumDependencyWeight` {number} Legacy property, always set to `0`.
++  * `weight` {number} Legacy property, always set to `16`.
+ 
+ A current state of this `Http2Stream`.
+ 
+diff --git a/lib/internal/http2/core.js b/lib/internal/http2/core.js
+index 38a33dd002..83f2967c39 100644
+--- a/lib/internal/http2/core.js
++++ b/lib/internal/http2/core.js
+@@ -30,6 +30,8 @@ const {
+   promisify,
+   SymbolAsyncDispose,
+   SymbolDispose,
++  deprecate,
++  deprecateProperty,
+ } = require('internal/util');
+ 
+ assertCrypto();
+@@ -719,6 +721,11 @@ function onGoawayData(code, lastStreamID, buf) {
+   }
+ }
+ 
++// TODO(aduh95): remove this in future semver-major
++const deprecateWeight = deprecateProperty('weight',
++                                          'Priority signaling has been deprecated as of RFC 1993.',
++                                          'DEP0194');
++
+ // When a ClientHttp2Session is first created, the socket may not yet be
+ // connected. If request() is called during this time, the actual request
+ // will be deferred until the socket is ready to go.
+@@ -747,12 +754,14 @@ function requestOnConnect(headers, options) {
+   if (options.waitForTrailers)
+     streamOptions |= STREAM_OPTION_GET_TRAILERS;
+ 
++  deprecateWeight(options);
++
+   // `ret` will be either the reserved stream ID (if positive)
+   // or an error code (if negative)
+   const ret = session[kHandle].request(headers,
+                                        streamOptions,
+                                        options.parent | 0,
+-                                       options.weight | 0,
++                                       NGHTTP2_DEFAULT_WEIGHT,
+                                        !!options.exclusive);
+ 
+   // In an error condition, one of three possible response codes will be
+@@ -791,11 +800,7 @@ function requestOnConnect(headers, options) {
+ //
+ // Also sets the default priority options if they are not set.
+ const setAndValidatePriorityOptions = hideStackFrames((options) => {
+-  if (options.weight === undefined) {
+-    options.weight = NGHTTP2_DEFAULT_WEIGHT;
+-  } else {
+-    validateNumber.withoutStackTrace(options.weight, 'options.weight');
+-  }
++  deprecateWeight(options);
+ 
+   if (options.parent === undefined) {
+     options.parent = 0;
+@@ -851,25 +856,6 @@ function submitSettings(settings, callback) {
+   }
+ }
+ 
+-// Submits a PRIORITY frame to be sent to the remote peer
+-// Note: If the silent option is true, the change will be made
+-// locally with no PRIORITY frame sent.
+-function submitPriority(options) {
+-  if (this.destroyed)
+-    return;
+-  this[kUpdateTimer]();
+-
+-  // If the parent is the id, do nothing because a
+-  // stream cannot be made to depend on itself.
+-  if (options.parent === this[kID])
+-    return;
+-
+-  this[kHandle].priority(options.parent | 0,
+-                         options.weight | 0,
+-                         !!options.exclusive,
+-                         !!options.silent);
+-}
+-
+ // Submit a GOAWAY frame to be sent to the remote peer.
+ // If the lastStreamID is set to <= 0, then the lastProcStreamID will
+ // be used. The opaqueData must either be a typed array or undefined
+@@ -2264,25 +2250,6 @@ class Http2Stream extends Duplex {
+     }
+   }
+ 
+-  priority(options) {
+-    if (this.destroyed)
+-      throw new ERR_HTTP2_INVALID_STREAM();
+-
+-    assertIsObject(options, 'options');
+-    options = { ...options };
+-    setAndValidatePriorityOptions(options);
+-
+-    const priorityFn = submitPriority.bind(this, options);
+-
+-    // If the handle has not yet been assigned, queue up the priority
+-    // frame to be sent as soon as the ready event is emitted.
+-    if (this.pending) {
+-      this.once('ready', priorityFn);
+-      return;
+-    }
+-    priorityFn();
+-  }
+-
+   sendTrailers(headers) {
+     if (this.destroyed || this.closed)
+       throw new ERR_HTTP2_INVALID_STREAM();
+@@ -2440,6 +2407,12 @@ class Http2Stream extends Duplex {
+   }
+ }
+ 
++// TODO(aduh95): remove this in future semver-major
++Http2Stream.prototype.priority = deprecate(function priority(options) {
++  if (this.destroyed)
++    throw new ERR_HTTP2_INVALID_STREAM();
++}, 'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993', 'DEP0194');
++
+ function callTimeout(self, session) {
+   // If the session is destroyed, this should never actually be invoked,
+   // but just in case...
+diff --git a/lib/internal/util.js b/lib/internal/util.js
+index bcc8bdd58d..6f5038ff9c 100644
+--- a/lib/internal/util.js
++++ b/lib/internal/util.js
+@@ -127,6 +127,17 @@ function isPendingDeprecation() {
+     !getOptionValue('--no-deprecation');
+ }
+ 
++function deprecateProperty(key, msg, code, isPendingDeprecation) {
++  const emitDeprecationWarning = getDeprecationWarningEmitter(
++    code, msg, undefined, false, isPendingDeprecation,
++  );
++  return (options) => {
++    if (key in options) {
++      emitDeprecationWarning();
++    }
++  };
++}
++
+ // Internal deprecator for pending --pending-deprecation. This can be invoked
+ // at snapshot building time as the warning permission is only queried at
+ // run time.
+@@ -936,6 +947,7 @@ module.exports = {
+   defineLazyProperties,
+   defineReplaceableLazyAttribute,
+   deprecate,
++  deprecateProperty,
+   emitExperimentalWarning,
+   encodingsMap,
+   exposeInterface,
+diff --git a/test/parallel/test-http2-client-priority-before-connect.js b/test/parallel/test-http2-client-priority-before-connect.js
+index 7aa13a5e45..2620126585 100644
+--- a/test/parallel/test-http2-client-priority-before-connect.js
++++ b/test/parallel/test-http2-client-priority-before-connect.js
+@@ -5,6 +5,11 @@ if (!common.hasCrypto)
+   common.skip('missing crypto');
+ const h2 = require('http2');
+ 
++common.expectWarning(
++  'DeprecationWarning',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'DEP0194');
++
+ const server = h2.createServer();
+ 
+ // We use the lower-level API here
+diff --git a/test/parallel/test-http2-client-request-options-errors.js b/test/parallel/test-http2-client-request-options-errors.js
+index f3c0c57965..48e76c7a2f 100644
+--- a/test/parallel/test-http2-client-request-options-errors.js
++++ b/test/parallel/test-http2-client-request-options-errors.js
+@@ -11,7 +11,6 @@ const http2 = require('http2');
+ 
+ const optionsToTest = {
+   endStream: 'boolean',
+-  weight: 'number',
+   parent: 'number',
+   exclusive: 'boolean',
+   silent: 'boolean'
+diff --git a/test/parallel/test-http2-client-set-priority.js b/test/parallel/test-http2-client-set-priority.js
+index c41ec99031..7900c1173f 100644
+--- a/test/parallel/test-http2-client-set-priority.js
++++ b/test/parallel/test-http2-client-set-priority.js
+@@ -6,10 +6,16 @@ if (!common.hasCrypto)
+ const assert = require('assert');
+ const http2 = require('http2');
+ 
++common.expectWarning(
++  'DeprecationWarning',
++  'Priority signaling has been deprecated as of RFC 1993.',
++  'DEP0194');
++
+ const checkWeight = (actual, expect) => {
+   const server = http2.createServer();
+   server.on('stream', common.mustCall((stream, headers, flags) => {
+-    assert.strictEqual(stream.state.weight, expect);
++    assert.strictEqual(stream.state.sumDependencyWeight, 0);
++    assert.strictEqual(stream.state.weight, 16);
+     stream.respond();
+     stream.end('test');
+   }));
+diff --git a/test/parallel/test-http2-priority-cycle-.js b/test/parallel/test-http2-priority-cycle-.js
+index af0d66d834..49a6de1029 100644
+--- a/test/parallel/test-http2-priority-cycle-.js
++++ b/test/parallel/test-http2-priority-cycle-.js
+@@ -7,6 +7,11 @@ const assert = require('assert');
+ const http2 = require('http2');
+ const Countdown = require('../common/countdown');
+ 
++common.expectWarning(
++  'DeprecationWarning',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'DEP0194');
++
+ const server = http2.createServer();
+ const largeBuffer = Buffer.alloc(1e4);
+ 
+diff --git a/test/parallel/test-http2-priority-event.js b/test/parallel/test-http2-priority-event.js
+index 41ec6534b2..dad9433620 100644
+--- a/test/parallel/test-http2-priority-event.js
++++ b/test/parallel/test-http2-priority-event.js
+@@ -3,21 +3,18 @@
+ const common = require('../common');
+ if (!common.hasCrypto)
+   common.skip('missing crypto');
+-const assert = require('assert');
+ const h2 = require('http2');
+ 
++common.expectWarning(
++  'DeprecationWarning',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'DEP0194');
++
+ const server = h2.createServer();
+ 
+ // We use the lower-level API here
+ server.on('stream', common.mustCall(onStream));
+ 
+-function onPriority(stream, parent, weight, exclusive) {
+-  assert.strictEqual(stream, 1);
+-  assert.strictEqual(parent, 0);
+-  assert.strictEqual(weight, 1);
+-  assert.strictEqual(exclusive, false);
+-}
+-
+ function onStream(stream, headers, flags) {
+   stream.priority({
+     parent: 0,
+@@ -33,7 +30,7 @@ function onStream(stream, headers, flags) {
+ 
+ server.listen(0);
+ 
+-server.on('priority', common.mustCall(onPriority));
++server.on('priority', common.mustNotCall());
+ 
+ server.on('listening', common.mustCall(() => {
+ 
+@@ -48,7 +45,9 @@ server.on('listening', common.mustCall(() => {
+     });
+   });
+ 
+-  req.on('priority', common.mustCall(onPriority));
++  // The priority event is not supported anymore by nghttp2
++  // since 1.65.0.
++  req.on('priority', common.mustNotCall());
+ 
+   req.on('response', common.mustCall());
+   req.resume();
+diff --git a/test/parallel/test-http2-server-stream-session-destroy.js b/test/parallel/test-http2-server-stream-session-destroy.js
+index 34b22fdfbd..88fcb3b3cd 100644
+--- a/test/parallel/test-http2-server-stream-session-destroy.js
++++ b/test/parallel/test-http2-server-stream-session-destroy.js
+@@ -6,6 +6,11 @@ if (!common.hasCrypto)
+ const assert = require('assert');
+ const h2 = require('http2');
+ 
++common.expectWarning(
++  'DeprecationWarning',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'DEP0194');
++
+ const server = h2.createServer();
+ 
+ server.on('stream', common.mustCall((stream) => {

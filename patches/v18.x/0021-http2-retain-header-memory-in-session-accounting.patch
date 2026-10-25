@@ -1,0 +1,194 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Mon, 8 Jun 2026 13:53:02 +0200
+Subject: [PATCH 21/74] http2: retain header memory in session accounting
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Matteo Collina <hello@matteocollina.com>
+PR-URL: https://github.com/nodejs/node/pull/63752
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+Reviewed-By: Rafael Gonzaga <rafael.nunu@hotmail.com>
+Reviewed-By: Gürgün Dayıoğlu <hey@gurgun.day>
+CVE-ID: CVE-2026-56846
+(cherry picked from commit f14d78b9e0201bfe0291f2b0dc4b5d88c70cc28e)
+(cherry picked from commit 31592b207b3165acffb3068e1244dcc1257752ee)
+---
+ doc/api/http2.md                              | 21 +++---
+ src/node_http2.cc                             | 13 +++-
+ src/node_http2.h                              |  4 +-
+ ...ttp2-max-session-memory-stalled-headers.js | 70 +++++++++++++++++++
+ 4 files changed, 97 insertions(+), 11 deletions(-)
+ create mode 100644 test/parallel/test-http2-max-session-memory-stalled-headers.js
+
+diff --git a/doc/api/http2.md b/doc/api/http2.md
+index 705644d5c7..bc63db0dcc 100644
+--- a/doc/api/http2.md
++++ b/doc/api/http2.md
+@@ -2427,9 +2427,10 @@ changes:
+     This is a credit based limit, existing `Http2Stream`s may cause this
+     limit to be exceeded, but new `Http2Stream` instances will be rejected
+     while this limit is exceeded. The current number of `Http2Stream` sessions,
+-    the current memory use of the header compression tables, current data
+-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
+-    counted towards the current limit. **Default:** `10`.
++    the current memory use of the header compression tables, header blocks
++    retained by open streams, current data queued to be sent, and
++    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
++    current limit. **Default:** `10`.
+   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
+     This is similar to [`server.maxHeadersCount`][] or
+     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
+@@ -2584,9 +2585,10 @@ changes:
+     credit based limit, existing `Http2Stream`s may cause this
+     limit to be exceeded, but new `Http2Stream` instances will be rejected
+     while this limit is exceeded. The current number of `Http2Stream` sessions,
+-    the current memory use of the header compression tables, current data
+-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
+-    counted towards the current limit. **Default:** `10`.
++    the current memory use of the header compression tables, header blocks
++    retained by open streams, current data queued to be sent, and
++    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
++    current limit. **Default:** `10`.
+   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
+     This is similar to [`server.maxHeadersCount`][] or
+     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
+@@ -2712,9 +2714,10 @@ changes:
+     This is a credit based limit, existing `Http2Stream`s may cause this
+     limit to be exceeded, but new `Http2Stream` instances will be rejected
+     while this limit is exceeded. The current number of `Http2Stream` sessions,
+-    the current memory use of the header compression tables, current data
+-    queued to be sent, and unacknowledged `PING` and `SETTINGS` frames are all
+-    counted towards the current limit. **Default:** `10`.
++    the current memory use of the header compression tables, header blocks
++    retained by open streams, current data queued to be sent, and
++    unacknowledged `PING` and `SETTINGS` frames are all counted towards the
++    current limit. **Default:** `10`.
+   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
+     This is similar to [`server.maxHeadersCount`][] or
+     [`request.maxHeadersCount`][] in the `node:http` module. The minimum value
+diff --git a/src/node_http2.cc b/src/node_http2.cc
+index c2de4a3e5f..2e7745f82f 100644
+--- a/src/node_http2.cc
++++ b/src/node_http2.cc
+@@ -768,6 +768,14 @@ BaseObjectPtr<Http2Stream> Http2Session::RemoveStream(int32_t id) {
+   stream = FindStream(id);
+   if (stream) {
+     streams_.erase(id);
++    if (stream->current_headers_length_ > 0) {
++      DecrementCurrentSessionMemory(stream->current_headers_length_);
++      stream->current_headers_length_ = 0;
++    }
++    if (stream->retained_headers_length_ > 0) {
++      DecrementCurrentSessionMemory(stream->retained_headers_length_);
++      stream->retained_headers_length_ = 0;
++    }
+     DecrementCurrentSessionMemory(sizeof(*stream));
+   }
+   return stream;
+@@ -1394,7 +1402,10 @@ void Http2Session::HandleHeadersFrame(const nghttp2_frame* frame) {
+   });
+   CHECK_EQ(stream->headers_count(), 0);
+ 
+-  DecrementCurrentSessionMemory(stream->current_headers_length_);
++  // Keep the header block charged against maxSessionMemory while the
++  // corresponding JS objects can still keep it alive for the lifetime of
++  // the stream.
++  stream->retained_headers_length_ += stream->current_headers_length_;
+   stream->current_headers_length_ = 0;
+ 
+   Local<Value> args[] = {
+diff --git a/src/node_http2.h b/src/node_http2.h
+index 87f6ab8305..f1d8d4d743 100644
+--- a/src/node_http2.h
++++ b/src/node_http2.h
+@@ -485,9 +485,11 @@ class Http2Stream : public AsyncWrap,
+ 
+   // The Current Headers block... As headers are received for this stream,
+   // they are temporarily stored here until the OnFrameReceived is called
+-  // signalling the end of the HEADERS frame
++  // signalling the end of the HEADERS frame.
+   nghttp2_headers_category current_headers_category_ = NGHTTP2_HCAT_HEADERS;
+   uint32_t current_headers_length_ = 0;  // total number of octets
++  // Charged against maxSessionMemory while headers stay alive in JS.
++  uint64_t retained_headers_length_ = 0;
+   std::vector<Http2Header> current_headers_;
+ 
+   // This keeps track of the amount of data read from the socket while the
+diff --git a/test/parallel/test-http2-max-session-memory-stalled-headers.js b/test/parallel/test-http2-max-session-memory-stalled-headers.js
+new file mode 100644
+index 0000000000..889a2c0856
+--- /dev/null
++++ b/test/parallel/test-http2-max-session-memory-stalled-headers.js
+@@ -0,0 +1,70 @@
++'use strict';
++
++const common = require('../common');
++if (!common.hasCrypto)
++  common.skip('missing crypto');
++
++const Countdown = require('../common/countdown');
++const assert = require('assert');
++const http2 = require('http2');
++
++const {
++  NGHTTP2_ENHANCE_YOUR_CALM,
++} = http2.constants;
++
++// Regression test: header blocks retained by stalled streams should continue
++// to count against maxSessionMemory after they have been handed to JS.
++const maxSessionMemory = 1;
++const totalRequests = 400;
++const cookieCrumbs = 120;
++
++let accepted = 0;
++let rejected = 0;
++
++const server = http2.createServer({ maxSessionMemory });
++server.on('stream', (stream) => {
++  accepted++;
++  stream.on('error', () => {});
++  stream.respond();
++  stream.write('x');
++});
++
++server.listen(0, common.mustCall(() => {
++  const client = http2.connect(`http://localhost:${server.address().port}`, {
++    settings: {
++      initialWindowSize: 0,
++    },
++  });
++  client.on('error', () => {});
++
++  client.on('remoteSettings', common.mustCall(() => {
++    let destroyed = false;
++    const countdown = new Countdown(totalRequests, common.mustCall(() => {
++      assert(rejected > 0);
++      assert(accepted < totalRequests);
++      server.close();
++    }));
++
++    for (let i = 0; i < totalRequests; i++) {
++      // Each array entry is sent as its own cookie header field (crumb).
++      const headers = {
++        ':path': '/',
++        'cookie': Array(cookieCrumbs).fill('a=1'),
++      };
++
++      const req = client.request(headers);
++      req.on('error', () => {});
++      req.on('close', () => {
++        if (req.rstCode === NGHTTP2_ENHANCE_YOUR_CALM) {
++          rejected++;
++          if (!destroyed) {
++            destroyed = true;
++            client.destroy();
++          }
++        }
++        countdown.dec();
++      });
++      req.end();
++    }
++  }));
++}));

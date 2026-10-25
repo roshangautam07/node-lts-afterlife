@@ -1,0 +1,126 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Mon, 20 Apr 2026 18:06:29 +0200
+Subject: [PATCH 04/60] tls: fix case-sensitive SNI context matching
+
+The regex constructed by server.addContext() lacked the case-insensitive
+flag, causing uppercase or mixed-case SNI hostnames from ClientHello to
+miss their intended context and fall back to the default context. This
+violates RFC 6066 Section 3, which states that DNS hostnames are
+case-insensitive. In mTLS configurations with per-tenant contexts, this
+allowed bypassing client certificate authorization by simply
+uppercasing the SNI hostname.
+
+Add the 'i' flag to the RegExp in addContext() so that SNI matching
+is case-insensitive.
+
+PR-URL: https://github.com/nodejs-private/node-private/pull/857
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+CVE-ID: CVE-2026-48928
+Refs: https://hackerone.com/reports/3656869
+
+(cherry picked from commit 39d1d0968471a144d93dc293d640008f57d3c58e)
+---
+ lib/_tls_wrap.js                              |  2 +-
+ .../parallel/test-tls-sni-case-insensitive.js | 79 +++++++++++++++++++
+ 2 files changed, 80 insertions(+), 1 deletion(-)
+ create mode 100644 test/parallel/test-tls-sni-case-insensitive.js
+
+diff --git a/lib/_tls_wrap.js b/lib/_tls_wrap.js
+index 33d5ae8ec6..ccb7795e58 100644
+--- a/lib/_tls_wrap.js
++++ b/lib/_tls_wrap.js
+@@ -1614,7 +1614,7 @@ Server.prototype.addContext = function(servername, context) {
+     servername
+       .replace(/([.^$+?\-\\[\]{}])/g, '\\$1')
+       .replaceAll('*', '[^.]*')
+-  }$`);
++  }$`, 'i');
+ 
+   const secureContext =
+     context instanceof common.SecureContext ? context : tls.createSecureContext(context);
+diff --git a/test/parallel/test-tls-sni-case-insensitive.js b/test/parallel/test-tls-sni-case-insensitive.js
+new file mode 100644
+index 0000000000..9a28a8c660
+--- /dev/null
++++ b/test/parallel/test-tls-sni-case-insensitive.js
+@@ -0,0 +1,79 @@
++'use strict';
++const common = require('../common');
++if (!common.hasCrypto)
++  common.skip('missing crypto');
++
++// Test that SNI context matching is case-insensitive, as required by
++// RFC 6066 Section 3 and RFC 6125. Uppercase SNI hostnames must select
++// the same context as their lowercase equivalents.
++
++const assert = require('assert');
++const tls = require('tls');
++const fixtures = require('../common/fixtures');
++
++function loadPEM(n) {
++  return fixtures.readKey(`${n}.pem`);
++}
++
++const serverOptions = {
++  key: loadPEM('agent2-key'),
++  cert: loadPEM('agent2-cert'),
++};
++
++const SNIContexts = {
++  'a.example.com': {
++    key: loadPEM('agent1-key'),
++    cert: loadPEM('agent1-cert'),
++  },
++  '*.test.com': {
++    key: loadPEM('agent3-key'),
++    cert: loadPEM('agent3-cert'),
++  },
++};
++
++const tests = [
++  // Exact match, uppercase
++  { servername: 'A.EXAMPLE.COM', expectedCert: 'agent1', desc: 'uppercase exact' },
++  // Mixed case
++  { servername: 'A.Example.Com', expectedCert: 'agent1', desc: 'mixed case exact' },
++  // Wildcard match, uppercase
++  { servername: 'B.TEST.COM', expectedCert: 'agent3', desc: 'uppercase wildcard' },
++  // Wildcard match, mixed case
++  { servername: 'b.Test.Com', expectedCert: 'agent3', desc: 'mixed case wildcard' },
++  // Lowercase still works
++  { servername: 'a.example.com', expectedCert: 'agent1', desc: 'lowercase exact' },
++];
++
++let remaining = tests.length;
++
++for (const { servername, expectedCert, desc } of tests) {
++  const server = tls.createServer(serverOptions, common.mustCall((c) => {
++    // The server should have selected the correct SNI context regardless of case
++    const cert = c.getCertificate();
++    assert.strictEqual(
++      cert.subject.CN, expectedCert,
++      `${desc}: expected server cert CN=${expectedCert}, got ${cert.subject.CN}`
++    );
++    c.end();
++  }));
++
++  server.addContext('a.example.com', SNIContexts['a.example.com']);
++  server.addContext('*.test.com', SNIContexts['*.test.com']);
++
++  server.listen(0, common.mustCall(() => {
++    const client = tls.connect({
++      port: server.address().port,
++      servername,
++      rejectUnauthorized: false,
++    }, common.mustCall(() => {
++      client.end();
++    }));
++
++    client.on('close', common.mustCall(() => {
++      server.close();
++      if (--remaining === 0) {
++        process.stdout.write('all tests passed\n');
++      }
++    }));
++  }));
++}

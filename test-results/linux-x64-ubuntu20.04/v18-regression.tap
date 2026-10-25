@@ -1,0 +1,294 @@
+TAP version 13
+1..73
+ok 1 parallel/test-async-hooks-stack-overflow
+  ---
+  duration_ms: 440.93700
+  ...
+ok 2 parallel/test-async-hooks-stack-overflow-nested-async
+  ---
+  duration_ms: 528.17600
+  ...
+ok 3 parallel/test-async-hooks-stack-overflow-try-catch
+  ---
+  duration_ms: 418.44400
+  ...
+ok 4 parallel/test-crypto-async-sign-verify
+  ---
+  duration_ms: 716.54600
+  ...
+ok 5 parallel/test-crypto-authenticated
+  ---
+  duration_ms: 332.97600
+  ...
+ok 6 parallel/test-crypto-random-cache-snapshot
+  ---
+  duration_ms: 5682.26600
+  ...
+ok 7 parallel/test-dns
+  ---
+  duration_ms: 216.63600
+  ...
+ok 8 parallel/test-dns-lookup
+  ---
+  duration_ms: 216.16800
+  ...
+ok 9 parallel/test-dns-resolve-null-bytes
+  ---
+  duration_ms: 176.79300
+  ...
+ok 10 parallel/test-dns-resolveany-ttl-overflow
+  ---
+  duration_ms: 222.80100
+  ...
+ok 11 parallel/test-dns-resolvesrv
+  ---
+  duration_ms: 175.87900
+  ...
+ok 12 parallel/test-dns-resolvesrv-econnrefused
+  ---
+  duration_ms: 181.57700
+  ...
+ok 13 parallel/test-dns-setlocaladdress
+  ---
+  duration_ms: 152.86900
+  ...
+ok 14 parallel/test-http-agent-free-socket-data-guard
+  ---
+  duration_ms: 288.95400
+  ...
+ok 15 parallel/test-http-agent-free-socket-pending-read
+  ---
+  duration_ms: 219.79800
+  ...
+ok 16 parallel/test-http-agent-keepalive
+  ---
+  duration_ms: 514.99900
+  ...
+ok 17 parallel/test-http-client-error-rawbytes
+  ---
+  duration_ms: 173.85300
+  ...
+ok 18 parallel/test-http-client-parse-error
+  ---
+  duration_ms: 217.48900
+  ...
+ok 19 parallel/test-http-client-reject-chunked-with-content-length
+  ---
+  duration_ms: 173.33200
+  ...
+ok 20 parallel/test-http-dummy-characters-smuggling
+  ---
+  duration_ms: 216.43800
+  ...
+ok 21 parallel/test-http-expect-continue-reuse-race
+  ---
+  duration_ms: 620.39700
+  ...
+ok 22 parallel/test-http-headers-distinct-proto
+  ---
+  duration_ms: 176.24800
+  ...
+ok 23 parallel/test-http-invalid-te
+  ---
+  duration_ms: 179.97800
+  ...
+ok 24 parallel/test-http-max-headers-count
+  ---
+  duration_ms: 214.68800
+  ...
+ok 25 parallel/test-http-max-headers-count-overflow
+  ---
+  duration_ms: 183.10700
+  ...
+ok 26 parallel/test-http-methods
+  ---
+  duration_ms: 139.08900
+  ...
+ok 27 parallel/test-http-multiple-headers
+  ---
+  duration_ms: 214.94600
+  ...
+ok 28 parallel/test-http-response-splitting
+  ---
+  duration_ms: 215.51000
+  ...
+ok 29 parallel/test-http-server-reject-chunked-with-content-length
+  ---
+  duration_ms: 173.89500
+  ...
+ok 30 parallel/test-http2-client-priority-before-connect
+  ---
+  duration_ms: 217.91900
+  ...
+ok 31 parallel/test-http2-client-request-options-errors
+  ---
+  duration_ms: 217.48400
+  ...
+ok 32 parallel/test-http2-client-set-priority
+  ---
+  duration_ms: 267.99300
+  ...
+ok 33 parallel/test-http2-getpackedsettings
+  ---
+  duration_ms: 172.95400
+  ...
+ok 34 parallel/test-http2-max-session-memory-stalled-headers
+  ---
+  duration_ms: 416.19900
+  ...
+ok 35 parallel/test-http2-misbehaving-flow-control
+  ---
+  duration_ms: 216.66100
+  ...
+ok 36 parallel/test-http2-misbehaving-flow-control-paused
+  ---
+  duration_ms: 268.12700
+  ...
+ok 37 parallel/test-http2-options-max-headers-exceeds-nghttp2
+  ---
+  duration_ms: 267.26000
+  ...
+ok 38 parallel/test-http2-ping
+  ---
+  duration_ms: 227.46300
+  ...
+ok 39 parallel/test-http2-premature-close
+  ---
+  duration_ms: 268.74700
+  ...
+ok 40 parallel/test-http2-priority-cycle-
+  ---
+  duration_ms: 214.82600
+  ...
+ok 41 parallel/test-http2-priority-event
+  ---
+  duration_ms: 213.99800
+  ...
+ok 42 parallel/test-http2-respond-file-fd-leak
+  ---
+  duration_ms: 218.20500
+  ...
+ok 43 parallel/test-http2-rst-stream-reentrancy
+  ---
+  duration_ms: 268.18100
+  ...
+ok 44 parallel/test-http2-server-stream-session-destroy
+  ---
+  duration_ms: 221.25100
+  ...
+ok 45 parallel/test-http2-session-cleanup-on-nghttp2-goaway
+  ---
+  duration_ms: 172.61200
+  ...
+ok 46 parallel/test-http2-session-reuse-different-authority
+  ---
+  duration_ms: 372.39000
+  ...
+ok 47 parallel/test-http2-session-settings
+  ---
+  duration_ms: 216.97600
+  ...
+ok 48 parallel/test-http2-window-update-overflow
+  ---
+  duration_ms: 214.09400
+  ...
+ok 49 parallel/test-https-agent-checkserveridentity-reuse
+  ---
+  duration_ms: 413.09600
+  ...
+ok 50 parallel/test-https-agent-getname
+  ---
+  duration_ms: 172.73100
+  ...
+ok 51 parallel/test-https-agent-pfx-object-array-reuse
+  ---
+  duration_ms: 416.20700
+  ...
+ok 52 parallel/test-https-expect-continue-reuse-race
+  ---
+  duration_ms: 514.60300
+  ...
+ok 53 parallel/test-https-foafssl # skip node compiled without OpenSSL CLI.
+  ---
+  duration_ms: 145.82100
+  ...
+ok 54 parallel/test-https-max-headers-count
+  ---
+  duration_ms: 337.92100
+  ...
+ok 55 parallel/test-https-session-reuse-different-servername
+  ---
+  duration_ms: 333.28400
+  ...
+ok 56 parallel/test-net-connect-options-invalid
+  ---
+  duration_ms: 177.40300
+  ...
+ok 57 parallel/test-path-win32-normalize-device-names # skip Windows only
+  ---
+  duration_ms: 141.06300
+  ...
+ok 58 parallel/test-require-resolve-invalid-paths
+  ---
+  duration_ms: 174.61400
+  ...
+ok 59 parallel/test-stream-destroy
+  ---
+  duration_ms: 215.60700
+  ...
+ok 60 parallel/test-tls-alpn-server-client
+  ---
+  duration_ms: 531.63900
+  ...
+ok 61 parallel/test-tls-check-server-identity
+  ---
+  duration_ms: 175.75500
+  ...
+ok 62 parallel/test-tls-connect-non-canonical-ip
+  ---
+  duration_ms: 334.51100
+  ...
+ok 63 parallel/test-tls-psk-alpn-callback-exception-handling # skip 0
+  ---
+  duration_ms: 525.71000
+  ...
+ok 64 parallel/test-tls-session-reuse-different-servername
+  ---
+  duration_ms: 413.69800
+  ...
+ok 65 parallel/test-tls-sni-case-insensitive
+  ---
+  duration_ms: 655.51500
+  ...
+ok 66 parallel/test-tls-spki-blocklist # skip 0
+  ---
+  duration_ms: 623.78600
+  ...
+ok 67 parallel/test-uncaught-exception-handler-stack-overflow
+  ---
+  duration_ms: 350.29500
+  ...
+ok 68 parallel/test-uncaught-exception-handler-stack-overflow-on-stack-overflow
+  ---
+  duration_ms: 332.69000
+  ...
+ok 69 parallel/test-whatwg-encoding-encodeinto-large
+  ---
+  duration_ms: 143.20900
+  ...
+ok 70 parallel/test-whatwg-url-custom-setters
+  ---
+  duration_ms: 141.56300
+  ...
+ok 71 parallel/test-zlib-invalid-input
+  ---
+  duration_ms: 617.95300
+  ...
+ok 72 parallel/test-zlib-reset-during-write
+  ---
+  duration_ms: 139.21600
+  ...
+ok 73 pummel/test-array-hash-collision
+  ---
+  duration_ms: 926.31400
+  ...

@@ -1,0 +1,96 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: RafaelGSS <rafael.nunu@hotmail.com>
+Date: Mon, 20 Jul 2026 18:05:36 -0300
+Subject: [PATCH 27/74] zlib: throw on out-of-bounds write buffers
+
+Signed-off-by: RafaelGSS <rafael.nunu@hotmail.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/931
+Refs: https://hackerone.com/reports/3857258
+CVE-ID: CVE-2026-58045
+(cherry picked from commit 0d072480c3dbbad6db8723e39786321646989343)
+(cherry picked from commit 8ac3840c98be97c62fec624e5edc7964518cb90d)
+---
+ src/node_zlib.cc                         |  9 ++++--
+ test/parallel/test-zlib-invalid-input.js | 35 ++++++++++++++++++++++++
+ 2 files changed, 42 insertions(+), 2 deletions(-)
+
+diff --git a/src/node_zlib.cc b/src/node_zlib.cc
+index 0c4ae0fc79..e61f29758f 100644
+--- a/src/node_zlib.cc
++++ b/src/node_zlib.cc
+@@ -22,6 +22,7 @@
+ #include "memory_tracker-inl.h"
+ #include "node.h"
+ #include "node_buffer.h"
++#include "node_errors.h"
+ 
+ #include "async_wrap-inl.h"
+ #include "env-inl.h"
+@@ -327,7 +328,9 @@ class CompressionStream : public AsyncWrap, public ThreadPoolWork {
+       if (!args[2]->Uint32Value(context).To(&in_off)) return;
+       if (!args[3]->Uint32Value(context).To(&in_len)) return;
+ 
+-      CHECK(Buffer::IsWithinBounds(in_off, in_len, Buffer::Length(in_buf)));
++      if (!Buffer::IsWithinBounds(in_off, in_len, Buffer::Length(in_buf))) {
++        return THROW_ERR_OUT_OF_RANGE(env, "input buffer is out of bounds");
++      }
+       in = Buffer::Data(in_buf) + in_off;
+     }
+ 
+@@ -335,7 +338,9 @@ class CompressionStream : public AsyncWrap, public ThreadPoolWork {
+     Local<Object> out_buf = args[4].As<Object>();
+     if (!args[5]->Uint32Value(context).To(&out_off)) return;
+     if (!args[6]->Uint32Value(context).To(&out_len)) return;
+-    CHECK(Buffer::IsWithinBounds(out_off, out_len, Buffer::Length(out_buf)));
++    if (!Buffer::IsWithinBounds(out_off, out_len, Buffer::Length(out_buf))) {
++      return THROW_ERR_OUT_OF_RANGE(env, "output buffer is out of bounds");
++    }
+     out = Buffer::Data(out_buf) + out_off;
+ 
+     CompressionStream* ctx;
+diff --git a/test/parallel/test-zlib-invalid-input.js b/test/parallel/test-zlib-invalid-input.js
+index 7aa44dfe70..3ab94412d3 100644
+--- a/test/parallel/test-zlib-invalid-input.js
++++ b/test/parallel/test-zlib-invalid-input.js
+@@ -51,6 +51,41 @@ nonStringInputs.forEach(common.mustCall((input) => {
+   });
+ }, nonStringInputs.length));
+ 
++const spoofedLength = new Uint8Array(1).fill(0x41);
++Object.defineProperty(spoofedLength, 'length', { get: () => 5000 });
++Object.defineProperty(spoofedLength, 'byteLength', { get: () => 5000 });
++
++[
++  zlib.deflateSync,
++  zlib.gzipSync,
++  zlib.deflateRawSync,
++  zlib.unzipSync,
++  zlib.inflateSync,
++  zlib.gunzipSync,
++  zlib.inflateRawSync,
++  zlib.brotliCompressSync,
++  zlib.brotliDecompressSync,
++].forEach((method) => {
++  assert.throws(() => {
++    method(spoofedLength);
++  }, {
++    name: 'RangeError',
++    code: 'ERR_OUT_OF_RANGE',
++  });
++});
++
++{
++  const deflate = zlib.createDeflate();
++  deflate._outOffset = deflate._chunkSize + 1;
++  assert.throws(() => {
++    deflate._processChunk(Buffer.alloc(1), zlib.constants.Z_FINISH);
++  }, {
++    name: 'RangeError',
++    code: 'ERR_OUT_OF_RANGE',
++  });
++  deflate.close();
++}
++
+ unzips.forEach(common.mustCall((uz, i) => {
+   uz.on('error', common.mustCall());
+   uz.on('end', common.mustNotCall());

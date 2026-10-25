@@ -1,0 +1,94 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Mon, 19 Jan 2026 08:35:13 +0100
+Subject: [PATCH 73/74] http2: validate initialWindowSize per HTTP/2 spec
+
+The HTTP/2 spec (RFC 7540) defines SETTINGS_INITIAL_WINDOW_SIZE
+maximum as 2^31-1. Values above this must be treated as a
+FLOW_CONTROL_ERROR. Previously, Node.js allowed values up to
+2^32-1 which caused nghttp2_submit_settings() to return
+NGHTTP2_ERR_INVALID_ARGUMENT, triggering an uncatchable
+assertion failure and crashing the process.
+
+This change adds proper validation to reject values >= 2^31
+with a catchable RangeError before they reach nghttp2.
+
+PR-URL: https://github.com/nodejs/node/pull/61402
+Reviewed-By: Rafael Gonzaga <rafael.nunu@hotmail.com>
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+Reviewed-By: Stephen Belanger <admin@stephenbelanger.com>
+Reviewed-By: Colin Ihrig <cjihrig@gmail.com>
+Reviewed-By: Chemi Atlow <chemi@atlow.co.il>
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+(cherry picked from commit 5ec7d1eba089596470bc82f1aaa47282d9e8e552)
+---
+ lib/internal/http2/core.js                    | 5 +++--
+ test/parallel/test-http2-getpackedsettings.js | 4 +++-
+ test/parallel/test-http2-session-settings.js  | 2 ++
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/lib/internal/http2/core.js b/lib/internal/http2/core.js
+index 566c0d3d79..bd82827936 100644
+--- a/lib/internal/http2/core.js
++++ b/lib/internal/http2/core.js
+@@ -219,6 +219,7 @@ function debugSessionObj(session, message, ...args) {
+ 
+ const kMaxFrameSize = (2 ** 24) - 1;
+ const kMaxInt = (2 ** 32) - 1;
++const kMaxInitialWindowSize = (2 ** 31) - 1;  // HTTP/2 spec maximum
+ const kMaxStreams = (2 ** 32) - 1;
+ const kMaxALTSVC = (2 ** 14) - 2;
+ 
+@@ -938,7 +939,7 @@ function pingCallback(cb) {
+ 
+ // Validates the values in a settings object. Specifically:
+ // 1. headerTableSize must be a number in the range 0 <= n <= kMaxInt
+-// 2. initialWindowSize must be a number in the range 0 <= n <= kMaxInt
++// 2. initialWindowSize must be a number in the range 0 <= n <= 2^31-1
+ // 3. maxFrameSize must be a number in the range 16384 <= n <= kMaxFrameSize
+ // 4. maxConcurrentStreams must be a number in the range 0 <= n <= kMaxStreams
+ // 5. maxHeaderListSize must be a number in the range 0 <= n <= kMaxInt
+@@ -952,7 +953,7 @@ const validateSettings = hideStackFrames((settings) => {
+                     0, kMaxInt);
+   assertWithinRange('initialWindowSize',
+                     settings.initialWindowSize,
+-                    0, kMaxInt);
++                    0, kMaxInitialWindowSize);
+   assertWithinRange('maxFrameSize',
+                     settings.maxFrameSize,
+                     16384, kMaxFrameSize);
+diff --git a/test/parallel/test-http2-getpackedsettings.js b/test/parallel/test-http2-getpackedsettings.js
+index 4f5970522f..dfbd01a306 100644
+--- a/test/parallel/test-http2-getpackedsettings.js
++++ b/test/parallel/test-http2-getpackedsettings.js
+@@ -20,7 +20,7 @@ assert.deepStrictEqual(val, check);
+   ['headerTableSize', 0],
+   ['headerTableSize', 2 ** 32 - 1],
+   ['initialWindowSize', 0],
+-  ['initialWindowSize', 2 ** 32 - 1],
++  ['initialWindowSize', 2 ** 31 - 1],  // Max per HTTP/2 spec
+   ['maxFrameSize', 16384],
+   ['maxFrameSize', 2 ** 24 - 1],
+   ['maxConcurrentStreams', 0],
+@@ -41,6 +41,8 @@ http2.getPackedSettings({ enablePush: false });
+   ['headerTableSize', -1],
+   ['headerTableSize', 2 ** 32],
+   ['initialWindowSize', -1],
++  ['initialWindowSize', 2 ** 31],  // Max per HTTP/2 spec is 2^31-1
++  ['initialWindowSize', 2 ** 32 - 1],  // Regression test for nghttp2 crash
+   ['initialWindowSize', 2 ** 32],
+   ['maxFrameSize', 16383],
+   ['maxFrameSize', 2 ** 24],
+diff --git a/test/parallel/test-http2-session-settings.js b/test/parallel/test-http2-session-settings.js
+index 571ee87d93..9ed0aa1332 100644
+--- a/test/parallel/test-http2-session-settings.js
++++ b/test/parallel/test-http2-session-settings.js
+@@ -97,6 +97,8 @@ server.listen(
+         ['headerTableSize', -1],
+         ['headerTableSize', 2 ** 32],
+         ['initialWindowSize', -1],
++        ['initialWindowSize', 2 ** 31],  // Max per HTTP/2 spec is 2^31-1
++        ['initialWindowSize', 2 ** 32 - 1],  // Regression test for nghttp2 crash
+         ['initialWindowSize', 2 ** 32],
+         ['maxFrameSize', 16383],
+         ['maxFrameSize', 2 ** 24],

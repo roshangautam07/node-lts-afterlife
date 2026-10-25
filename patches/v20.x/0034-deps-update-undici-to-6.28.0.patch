@@ -1,0 +1,360 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: "Node.js GitHub Bot" <github-bot@iojs.org>
+Date: Fri, 24 Jul 2026 13:00:30 +0000
+Subject: [PATCH 34/60] deps: update undici to 6.28.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+PR-URL: https://github.com/nodejs/node/pull/64714
+Reviewed-By: Matteo Collina <matteo.collina@gmail.com>
+Reviewed-By: Aviv Keller <me@aviv.sh>
+Reviewed-By: Ulises Gascón <ulisesgascongonzalez@gmail.com>
+Reviewed-By: Trivikram Kamat <trivikr.dev@gmail.com>
+Reviewed-By: Juan José Arboleda <soyjuanarbol@gmail.com>
+(cherry picked from commit 3fd0aa51d089d546a0e1df860425984d124d72a8)
+---
+ deps/undici/src/lib/core/request.js           | 13 ++-
+ deps/undici/src/lib/dispatcher/client-h1.js   | 13 ++-
+ deps/undici/src/lib/handler/retry-handler.js  | 34 +++++++
+ deps/undici/src/lib/llhttp/wasm_build_env.txt |  4 +-
+ deps/undici/src/lib/web/cookies/util.js       | 88 +++++++++++++++++--
+ deps/undici/src/package.json                  |  2 +-
+ deps/undici/undici.js                         | 22 ++++-
+ src/undici_version.h                          |  2 +-
+ 8 files changed, 159 insertions(+), 19 deletions(-)
+
+diff --git a/deps/undici/src/lib/core/request.js b/deps/undici/src/lib/core/request.js
+index 4da60667ec..8e7ecc7308 100644
+--- a/deps/undici/src/lib/core/request.js
++++ b/deps/undici/src/lib/core/request.js
+@@ -350,7 +350,13 @@ function processHeader (request, key, val) {
+       } else if (typeof val[i] === 'object') {
+         throw new InvalidArgumentError(`invalid ${key} header`)
+       } else {
+-        arr.push(`${val[i]}`)
++        // Coerce primitives (and reject unsafe coercions such as functions
++        // with a crafted toString/Symbol.toPrimitive).
++        const str = `${val[i]}`
++        if (!isValidHeaderValue(str)) {
++          throw new InvalidArgumentError(`invalid ${key} header`)
++        }
++        arr.push(str)
+       }
+     }
+     val = arr
+@@ -361,7 +367,12 @@ function processHeader (request, key, val) {
+   } else if (val === null) {
+     val = ''
+   } else {
++    // Coerce primitives (and reject unsafe coercions such as functions
++    // with a crafted toString/Symbol.toPrimitive).
+     val = `${val}`
++    if (!isValidHeaderValue(val)) {
++      throw new InvalidArgumentError(`invalid ${key} header`)
++    }
+   }
+ 
+   if (headerName === 'host') {
+diff --git a/deps/undici/src/lib/dispatcher/client-h1.js b/deps/undici/src/lib/dispatcher/client-h1.js
+index 9455517a19..a801ecb360 100644
+--- a/deps/undici/src/lib/dispatcher/client-h1.js
++++ b/deps/undici/src/lib/dispatcher/client-h1.js
+@@ -10,6 +10,7 @@ const {
+   RequestContentLengthMismatchError,
+   ResponseContentLengthMismatchError,
+   RequestAbortedError,
++  InvalidArgumentError,
+   HeadersTimeoutError,
+   HeadersOverflowError,
+   SocketError,
+@@ -993,8 +994,16 @@ function writeH1 (client, request) {
+     }
+     body = bodyStream.stream
+     contentLength = bodyStream.length
+-  } else if (util.isBlobLike(body) && request.contentType == null && body.type) {
+-    headers.push('content-type', body.type)
++  } else if (util.isBlobLike(body) && request.contentType == null) {
++    const contentType = body.type
++    if (contentType) {
++      const contentTypeValue = `${contentType}`
++      if (!util.isValidHeaderValue(contentTypeValue)) {
++        util.errorRequest(client, request, new InvalidArgumentError('invalid content-type header'))
++        return false
++      }
++      headers.push('content-type', contentTypeValue)
++    }
+   }
+ 
+   if (body && typeof body.read === 'function') {
+diff --git a/deps/undici/src/lib/handler/retry-handler.js b/deps/undici/src/lib/handler/retry-handler.js
+index 5d1ccf0053..c62a2409f3 100644
+--- a/deps/undici/src/lib/handler/retry-handler.js
++++ b/deps/undici/src/lib/handler/retry-handler.js
+@@ -15,6 +15,28 @@ function calculateRetryAfterHeader (retryAfter) {
+   return new Date(retryAfter).getTime() - current
+ }
+ 
++function validatePartialResponseContentLength (headers, range, statusCode, retryCount) {
++  const contentLength = headers['content-length']
++  if (contentLength == null) {
++    return null
++  }
++
++  if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
++    return null
++  }
++
++  const length = Number(contentLength)
++  const expectedLength = range.end - range.start + 1
++  if (!Number.isFinite(length) || length !== expectedLength) {
++    return new RequestRetryError('Content-Length mismatch', statusCode, {
++      headers,
++      data: { count: retryCount }
++    })
++  }
++
++  return null
++}
++
+ class RetryHandler {
+   constructor (opts, handlers) {
+     const { retryOptions, ...dispatchOpts } = opts
+@@ -229,6 +251,12 @@ class RetryHandler {
+         return false
+       }
+ 
++      const contentLengthError = validatePartialResponseContentLength(headers, contentRange, statusCode, this.retryCount)
++      if (contentLengthError != null) {
++        this.abort(contentLengthError)
++        return false
++      }
++
+       const { start, size, end = size - 1 } = contentRange
+ 
+       assert(this.start === start, 'content-range mismatch')
+@@ -252,6 +280,12 @@ class RetryHandler {
+           )
+         }
+ 
++        const contentLengthError = validatePartialResponseContentLength(headers, range, statusCode, this.retryCount)
++        if (contentLengthError != null) {
++          this.abort(contentLengthError)
++          return false
++        }
++
+         const { start, size, end = size - 1 } = range
+         assert(
+           start != null && Number.isFinite(start),
+diff --git a/deps/undici/src/lib/llhttp/wasm_build_env.txt b/deps/undici/src/lib/llhttp/wasm_build_env.txt
+index f8ac034d6e..eb2202707a 100644
+--- a/deps/undici/src/lib/llhttp/wasm_build_env.txt
++++ b/deps/undici/src/lib/llhttp/wasm_build_env.txt
+@@ -1,12 +1,12 @@
+ 
+-> undici@6.27.0 prebuild:wasm
++> undici@6.28.0 prebuild:wasm
+ > node build/wasm.js --prebuild
+ 
+ > docker build --platform=linux/x86_64 -t llhttp_wasm_builder -f /home/runner/work/node/node/deps/undici/src/build/Dockerfile /home/runner/work/node/node/deps/undici/src
+ 
+ 
+ 
+-> undici@6.27.0 build:wasm
++> undici@6.28.0 build:wasm
+ > node build/wasm.js --docker
+ 
+ > docker run --rm -t --platform=linux/x86_64 --user 1001:1001 --mount type=bind,source=/home/runner/work/node/node/deps/undici/src/lib/llhttp,target=/home/node/undici/lib/llhttp llhttp_wasm_builder node build/wasm.js
+diff --git a/deps/undici/src/lib/web/cookies/util.js b/deps/undici/src/lib/web/cookies/util.js
+index 254f5419e9..ca408e153a 100644
+--- a/deps/undici/src/lib/web/cookies/util.js
++++ b/deps/undici/src/lib/web/cookies/util.js
+@@ -105,7 +105,7 @@ function validateCookiePath (path) {
+ 
+     if (
+       code < 0x20 || // exclude CTLs (0-31)
+-      code === 0x7F || // DEL
++      code > 0x7E || // exclude DEL and non-ascii
+       code === 0x3B // ;
+     ) {
+       throw new Error('Invalid cookie path')
+@@ -114,16 +114,80 @@ function validateCookiePath (path) {
+ }
+ 
+ /**
+- * I have no idea why these values aren't allowed to be honest,
+- * but Deno tests these. - Khafra
++ * <let-dig> ::= <letter> | <digit>
++ *
++ * <letter> ::= any one of the 52 alphabetic characters A through Z in
++ * upper case and a through z in lower case
++ *
++ * <digit> ::= any one of the ten digits 0 through 9r
++ *
++ * @see https://www.rfc-editor.org/rfc/rfc1034#section-3.5
++ * @param {number} code
++ */
++function isLetterOrDigit (code) {
++  return (
++    (code >= 0x30 && code <= 0x39) || // 0-9
++    (code >= 0x41 && code <= 0x5A) || // A-Z
++    (code >= 0x61 && code <= 0x7A) // a-z
++  )
++}
++
++/**
++ * Validates a cookie domain against the "preferred name syntax".
++ *
++ * <domain>      ::= <subdomain> | " "
++ * <subdomain>   ::= <label> | <subdomain> "." <label>
++ * <label>       ::= <let-dig> [ [ <ldh-str> ] <let-dig> ]
++ * <ldh-str>     ::= <let-dig-hyp> | <let-dig-hyp> <ldh-str>
++ * <let-dig-hyp> ::= <let-dig> | "-"
++ *
++ * @see https://www.rfc-editor.org/rfc/rfc1034#section-3.5
++ * @see https://www.rfc-editor.org/rfc/rfc1123#section-2.1
++ * @see https://www.rfc-editor.org/rfc/rfc1035#section-2.3.4
+  * @param {string} domain
+  */
+ function validateCookieDomain (domain) {
+-  if (
+-    domain.startsWith('-') ||
+-    domain.endsWith('.') ||
+-    domain.endsWith('-')
+-  ) {
++  // <domain> ::= <subdomain> | " "
++  if (domain === ' ') {
++    return
++  }
++
++  if (domain.length > 255) {
++    throw new Error('Invalid cookie domain')
++  }
++
++  let labelLength = 0
++
++  for (let i = 0; i < domain.length; ++i) {
++    const code = domain.charCodeAt(i)
++
++    if (code === 0x2E) {
++      if (labelLength === 0) {
++        throw new Error('Invalid cookie domain')
++      }
++
++      if (domain.charCodeAt(i - 1) === 0x2D) { // "-"
++        throw new Error('Invalid cookie domain')
++      }
++
++      labelLength = 0
++      continue
++    }
++
++    if (labelLength === 0 && !isLetterOrDigit(code)) {
++      throw new Error('Invalid cookie domain')
++    }
++
++    if (!isLetterOrDigit(code) && code !== 0x2D) { // "-"
++      throw new Error('Invalid cookie domain')
++    }
++
++    if (++labelLength > 63) {
++      throw new Error('Invalid cookie domain')
++    }
++  }
++
++  if (labelLength === 0 || domain.charCodeAt(domain.length - 1) === 0x2D) { // "-"
+     throw new Error('Invalid cookie domain')
+   }
+ }
+@@ -266,7 +330,13 @@ function stringify (cookie) {
+ 
+     const [key, ...value] = part.split('=')
+ 
+-    out.push(`${key.trim()}=${value.join('=')}`)
++    const trimmedKey = key.trim()
++    const joinedValue = value.join('=')
++
++    validateCookieName(trimmedKey)
++    validateCookieValue(joinedValue)
++
++    out.push(`${trimmedKey}=${joinedValue}`)
+   }
+ 
+   return out.join('; ')
+diff --git a/deps/undici/src/package.json b/deps/undici/src/package.json
+index 3c2001f391..cd46deca24 100644
+--- a/deps/undici/src/package.json
++++ b/deps/undici/src/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "undici",
+-  "version": "6.27.0",
++  "version": "6.28.0",
+   "description": "An HTTP/1.1 client, written from scratch for Node.js",
+   "homepage": "https://undici.nodejs.org",
+   "bugs": {
+diff --git a/deps/undici/undici.js b/deps/undici/undici.js
+index 19ad92ad10..b34137a045 100644
+--- a/deps/undici/undici.js
++++ b/deps/undici/undici.js
+@@ -2280,7 +2280,11 @@ var require_request = __commonJS({
+           } else if (typeof val[i] === "object") {
+             throw new InvalidArgumentError(`invalid ${key} header`);
+           } else {
+-            arr.push(`${val[i]}`);
++            const str = `${val[i]}`;
++            if (!isValidHeaderValue(str)) {
++              throw new InvalidArgumentError(`invalid ${key} header`);
++            }
++            arr.push(str);
+           }
+         }
+         val = arr;
+@@ -2292,6 +2296,9 @@ var require_request = __commonJS({
+         val = "";
+       } else {
+         val = `${val}`;
++        if (!isValidHeaderValue(val)) {
++          throw new InvalidArgumentError(`invalid ${key} header`);
++        }
+       }
+       if (headerName === "host") {
+         if (request.host !== null) {
+@@ -5921,6 +5928,7 @@ var require_client_h1 = __commonJS({
+       RequestContentLengthMismatchError,
+       ResponseContentLengthMismatchError,
+       RequestAbortedError,
++      InvalidArgumentError,
+       HeadersTimeoutError,
+       HeadersOverflowError,
+       SocketError,
+@@ -6657,8 +6665,16 @@ var require_client_h1 = __commonJS({
+         }
+         body = bodyStream.stream;
+         contentLength = bodyStream.length;
+-      } else if (util.isBlobLike(body) && request.contentType == null && body.type) {
+-        headers.push("content-type", body.type);
++      } else if (util.isBlobLike(body) && request.contentType == null) {
++        const contentType = body.type;
++        if (contentType) {
++          const contentTypeValue = `${contentType}`;
++          if (!util.isValidHeaderValue(contentTypeValue)) {
++            util.errorRequest(client, request, new InvalidArgumentError("invalid content-type header"));
++            return false;
++          }
++          headers.push("content-type", contentTypeValue);
++        }
+       }
+       if (body && typeof body.read === "function") {
+         body.read(0);
+diff --git a/src/undici_version.h b/src/undici_version.h
+index 297c1b5a58..7079eb776a 100644
+--- a/src/undici_version.h
++++ b/src/undici_version.h
+@@ -2,5 +2,5 @@
+ // Refer to tools/dep_updaters/update-undici.sh
+ #ifndef SRC_UNDICI_VERSION_H_
+ #define SRC_UNDICI_VERSION_H_
+-#define UNDICI_VERSION "6.27.0"
++#define UNDICI_VERSION "6.28.0"
+ #endif  // SRC_UNDICI_VERSION_H_

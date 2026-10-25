@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: "Node.js GitHub Bot" <github-bot@iojs.org>
+Date: Mon, 5 Oct 2026 21:39:42 -0400
+Subject: [PATCH 49/60] crypto: update root certificates to NSS 3.129
+
+This is the certdata.txt[0] from NSS 3.129.
+
+This is the version of NSS that shipped in Firefox 157.0 on 2026-09-29.
+
+[0] https://raw.githubusercontent.com/nss-dev/nss/refs/tags/NSS_3_129_RTM/lib/ckfw/builtins/certdata.txt
+
+PR-URL: https://github.com/nodejs/node/pull/66496
+Reviewed-By: Colin Ihrig <cjihrig@gmail.com>
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+Reviewed-By: Moshe Atlow <moshe@atlow.co.il>
+(cherry picked from commit ec9e5e4a3e2fcf685313357fcd4b31e7e30ef3fb)
+---
+ tools/certdata.txt | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/tools/certdata.txt b/tools/certdata.txt
+index fafc33ddee..e5cc5b976d 100644
+--- a/tools/certdata.txt
++++ b/tools/certdata.txt
+@@ -3201,7 +3201,10 @@ CKA_VALUE MULTILINE_OCTAL
+ \333\374\046\210\307
+ END
+ CKA_NSS_MOZILLA_CA_POLICY CK_BBOOL CK_TRUE
+-CKA_NSS_SERVER_DISTRUST_AFTER CK_BBOOL CK_FALSE
++# For Server Distrust After: Wed Apr 15 23:59:59 2026
++CKA_NSS_SERVER_DISTRUST_AFTER MULTILINE_OCTAL
++\062\066\060\064\061\065\062\063\065\071\065\071\132
++END
+ CKA_NSS_EMAIL_DISTRUST_AFTER CK_BBOOL CK_FALSE
+ 
+ # Trust for "Izenpe.com"
+@@ -3234,10 +3237,6 @@ CKA_SERIAL_NUMBER MULTILINE_OCTAL
+ \002\020\000\260\267\132\026\110\137\277\341\313\365\213\327\031
+ \346\175
+ END
+-# For Server Distrust After: Wed Apr 15 23:59:59 2026
+-CKA_NSS_SERVER_DISTRUST_AFTER MULTILINE_OCTAL
+-\062\066\060\064\061\065\062\063\065\071\065\071\132
+-END
+ CKA_TRUST_SERVER_AUTH CK_TRUST CKT_NSS_TRUSTED_DELEGATOR
+ CKA_TRUST_EMAIL_PROTECTION CK_TRUST CKT_NSS_MUST_VERIFY_TRUST
+ CKA_TRUST_CODE_SIGNING CK_TRUST CKT_NSS_MUST_VERIFY_TRUST

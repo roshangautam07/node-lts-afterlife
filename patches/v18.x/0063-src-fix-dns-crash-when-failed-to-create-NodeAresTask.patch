@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: theanarkh <theratliter@gmail.com>
+Date: Fri, 1 Nov 2024 11:28:03 +0800
+Subject: [PATCH 63/74] src: fix dns crash when failed to create NodeAresTask
+
+PR-URL: https://github.com/nodejs/node/pull/55521
+Fixes: https://github.com/nodejs/node/issues/52439
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+(cherry picked from commit f17416ec3e0cd9e28503c2a80834e0418e3f9a72)
+---
+ src/cares_wrap.cc | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
+
+diff --git a/src/cares_wrap.cc b/src/cares_wrap.cc
+index e85766a558..a5be76ba8b 100644
+--- a/src/cares_wrap.cc
++++ b/src/cares_wrap.cc
+@@ -143,14 +143,10 @@ void ares_sockstate_cb(void* data, ares_socket_t sock, int read, int write) {
+                   ares_poll_cb);
+ 
+   } else {
+-    /* read == 0 and write == 0 this is c-ares's way of notifying us that */
+-    /* the socket is now closed. We must free the data associated with */
+-    /* socket. */
+-    CHECK(task &&
+-          "When an ares socket is closed we should have a handle for it");
+-
+-    channel->task_list()->erase(it);
+-    channel->env()->CloseHandle(&task->poll_watcher, ares_poll_close_cb);
++    if (task != nullptr) {
++      channel->task_list()->erase(it);
++      channel->env()->CloseHandle(&task->poll_watcher, ares_poll_close_cb);
++    }
+ 
+     if (channel->task_list()->empty()) {
+       channel->CloseTimer();
+@@ -699,7 +695,6 @@ GetNameInfoReqWrap::GetNameInfoReqWrap(
+ void ChannelWrap::AresTimeout(uv_timer_t* handle) {
+   ChannelWrap* channel = static_cast<ChannelWrap*>(handle->data);
+   CHECK_EQ(channel->timer_handle(), handle);
+-  CHECK_EQ(false, channel->task_list()->empty());
+   ares_process_fd(channel->cares_channel(), ARES_SOCKET_BAD, ARES_SOCKET_BAD);
+ }
+ 

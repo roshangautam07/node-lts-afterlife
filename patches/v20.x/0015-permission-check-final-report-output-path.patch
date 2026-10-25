@@ -1,0 +1,169 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: RafaelGSS <rafael.nunu@hotmail.com>
+Date: Fri, 26 Jun 2026 19:08:22 -0300
+Subject: [PATCH 15/60] permission: check final report output path
+
+Refs: https://hackerone.com/reports/3815767
+Signed-off-by: RafaelGSS <rafael.nunu@hotmail.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/926
+CVE-ID: CVE-2026-58039
+(cherry picked from commit ed18b9cc073f0b63268d6f2c84730b18e90fdd20)
+---
+ lib/internal/process/report.js                | 10 ++-
+ src/node_report.cc                            | 24 +++----
+ .../test-permission-fs-write-report.js        | 65 +++++++++++++++++++
+ 3 files changed, 86 insertions(+), 13 deletions(-)
+
+diff --git a/lib/internal/process/report.js b/lib/internal/process/report.js
+index 7adaeacc61..5ce0f470b5 100644
+--- a/lib/internal/process/report.js
++++ b/lib/internal/process/report.js
+@@ -4,6 +4,7 @@ const {
+   ERR_SYNTHETIC,
+ } = require('internal/errors').codes;
+ const { getValidatedPath } = require('internal/fs/utils');
++const { sep } = require('path');
+ const permission = require('internal/process/permission');
+ const {
+   validateBoolean,
+@@ -26,7 +27,14 @@ const report = {
+     }
+ 
+     if (permission.isEnabled()) {
+-      const resource = file ?? process.cwd();
++      let resource = file;
++      if (resource !== undefined) {
++        const directory = nr.getDirectory();
++        if (directory !== '')
++          resource = `${directory}${sep}${resource}`;
++      } else {
++        resource = process.cwd();
++      }
+       if (!permission.has('fs.write', resource)) {
+         throw new ERR_ACCESS_DENIED(
+           'Access to this API has been restricted',
+diff --git a/src/node_report.cc b/src/node_report.cc
+index 1be6657051..be104ef486 100644
+--- a/src/node_report.cc
++++ b/src/node_report.cc
+@@ -866,13 +866,6 @@ std::string TriggerNodeReport(Isolate* isolate,
+       filename = *DiagnosticFilename(
+           env != nullptr ? env->thread_id() : 0, "report", "json");
+     }
+-    if (env != nullptr) {
+-      THROW_IF_INSUFFICIENT_PERMISSIONS(
+-          env,
+-          permission::PermissionScope::kFileSystemWrite,
+-          std::string_view(Environment::GetCwd(env->exec_path())),
+-          filename);
+-    }
+   }
+ 
+   // Open the report file stream for writing. Supports stdout/err,
+@@ -890,14 +883,21 @@ std::string TriggerNodeReport(Isolate* isolate,
+       report_directory = per_process::cli_options->report_directory;
+     }
+     // Regular file. Append filename to directory path if one was specified
++    std::string pathname;
+     if (report_directory.length() > 0) {
+-      std::string pathname = report_directory;
+-      pathname += kPathSeparator;
+-      pathname += filename;
+-      outfile.open(pathname, std::ios::out | std::ios::binary);
++      pathname = report_directory + kPathSeparator + filename;
+     } else {
+-      outfile.open(filename, std::ios::out | std::ios::binary);
++      pathname = filename;
++    }
++
++    // We may not always be in a great state when generating a node report.
++    // Allow for the case where we don't have an env.
++    if (env != nullptr) {
++      THROW_IF_INSUFFICIENT_PERMISSIONS(
++          env, permission::PermissionScope::kFileSystemWrite, pathname, "");
+     }
++
++    outfile.open(pathname, std::ios::out | std::ios::binary);
+     // Check for errors on the file open
+     if (!outfile.is_open()) {
+       std::cerr << "\nFailed to open Node.js report file: " << filename;
+diff --git a/test/parallel/test-permission-fs-write-report.js b/test/parallel/test-permission-fs-write-report.js
+index 8b96852334..21d68bd0f6 100644
+--- a/test/parallel/test-permission-fs-write-report.js
++++ b/test/parallel/test-permission-fs-write-report.js
+@@ -23,6 +23,7 @@ if (!process.permission) {
+ }
+ 
+ const assert = require('assert');
++const fs = require('fs');
+ const path = require('path');
+ const tmpdir = require('../common/tmpdir');
+ 
+@@ -73,3 +74,67 @@ spawnSyncAndExitWithoutError(
+   ],
+   { cwd: tmpdir.path }
+ );
++
++{
++  const allowedDir = path.join(tmpdir.path, 'report-allowed');
++  const deniedDir = path.join(tmpdir.path, 'report-denied');
++  fs.mkdirSync(allowedDir);
++  fs.mkdirSync(deniedDir);
++
++  const deniedFile = path.join(deniedDir, 'report.json');
++  fs.writeFileSync(deniedFile, 'existing content');
++  spawnSyncAndExitWithoutError(
++    process.execPath,
++    [
++      '--experimental-permission',
++      '--allow-fs-read=*',
++      `--allow-fs-write=${allowedDir}`,
++      '-e',
++      `
++      const assert = require('assert');
++      process.report.directory = ${JSON.stringify(deniedDir)};
++      assert.throws(() => {
++        process.report.writeReport('report.json');
++      }, {
++        code: 'ERR_ACCESS_DENIED',
++        permission: 'FileSystemWrite',
++        resource: ${JSON.stringify(deniedFile)},
++      });
++      `,
++    ],
++    { cwd: allowedDir },
++  );
++  assert.strictEqual(fs.readFileSync(deniedFile, 'utf8'), 'existing content');
++}
++
++{
++  const allowedDir = path.join(tmpdir.path, 'report-filename-allowed');
++  const deniedDir = path.join(tmpdir.path, 'report-filename-denied');
++  fs.mkdirSync(allowedDir);
++  fs.mkdirSync(deniedDir);
++
++  const deniedFile = path.join(deniedDir, 'report.json');
++  spawnSyncAndExitWithoutError(
++    process.execPath,
++    [
++      '--experimental-permission',
++      '--allow-fs-read=*',
++      `--allow-fs-write=${allowedDir}`,
++      '-e',
++      `
++      const assert = require('assert');
++      process.report.directory = ${JSON.stringify(deniedDir)};
++      process.report.filename = 'report.json';
++      assert.throws(() => {
++        process.report.writeReport();
++      }, {
++        code: 'ERR_ACCESS_DENIED',
++        permission: 'FileSystemWrite',
++        resource: ${JSON.stringify(deniedFile)},
++      });
++      `,
++    ],
++    { cwd: allowedDir },
++  );
++  assert.strictEqual(fs.existsSync(deniedFile), false);
++}

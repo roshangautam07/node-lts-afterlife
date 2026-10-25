@@ -1,0 +1,116 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Wed, 1 Jul 2026 09:43:01 +0200
+Subject: [PATCH 13/60] http2: defer rst stream while in scope
+
+Signed-off-by: Matteo Collina <hello@matteocollina.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/921
+Refs: https://hackerone.com/reports/3833629
+Reviewed-By: Rafael Gonzaga <rafael.nunu@hotmail.com>
+CVE-ID: CVE-2026-56848
+(cherry picked from commit daa6d25e3dceb30edb832a778ec0610c8bc2dd12)
+---
+ src/node_http2.cc                             | 12 +++-
+ .../test-http2-rst-stream-reentrancy.js       | 68 +++++++++++++++++++
+ 2 files changed, 78 insertions(+), 2 deletions(-)
+ create mode 100644 test/parallel/test-http2-rst-stream-reentrancy.js
+
+diff --git a/src/node_http2.cc b/src/node_http2.cc
+index 893570ee5e..0817afe73a 100644
+--- a/src/node_http2.cc
++++ b/src/node_http2.cc
+@@ -2477,10 +2477,18 @@ void Http2Stream::SubmitRstStream(const uint32_t code) {
+   // if RST_STREAM received is not in scope and added to the list
+   // causing endpoint to hang.
+   if (session_->is_in_scope() && is_stream_cancel(code)) {
+-      session_->AddPendingRstStream(id_);
+-      return;
++    session_->AddPendingRstStream(id_);
++    return;
+   }
+ 
++  // If RST_STREAM is submitted while nghttp2 is processing callbacks for
++  // a refused stream, don't force purge pending data. Sending pending data
++  // here can re-enter nghttp2 and close streams that are still being used
++  // by the active receive operation.
++  if (session_->is_in_scope() && code == NGHTTP2_REFUSED_STREAM) {
++    FlushRstStream();
++    return;
++  }
+ 
+   // If possible, force a purge of any currently pending data here to make sure
+   // it is sent before closing the stream. If it returns non-zero then we need
+diff --git a/test/parallel/test-http2-rst-stream-reentrancy.js b/test/parallel/test-http2-rst-stream-reentrancy.js
+new file mode 100644
+index 0000000000..8added7f94
+--- /dev/null
++++ b/test/parallel/test-http2-rst-stream-reentrancy.js
+@@ -0,0 +1,68 @@
++'use strict';
++const common = require('../common');
++if (!common.hasCrypto)
++  common.skip('missing crypto');
++
++const http2 = require('http2');
++const net = require('net');
++
++const PREFACE = Buffer.from('PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n');
++
++function frame(type, flags, sid, payload = Buffer.alloc(0)) {
++  const header = Buffer.alloc(9);
++  header.writeUIntBE(payload.length, 0, 3);
++  header[3] = type;
++  header[4] = flags;
++  header.writeUInt32BE(sid & 0x7fffffff, 5);
++  return Buffer.concat([header, payload]);
++}
++
++function goaway(lastStreamID, code) {
++  const payload = Buffer.alloc(8);
++  payload.writeUInt32BE(lastStreamID, 0);
++  payload.writeUInt32BE(code, 4);
++  return frame(7, 0, 0, payload);
++}
++
++function headers(sid) {
++  return frame(1, 0x05, sid, Buffer.from([
++    0x82,  // :method: GET
++    0x86,  // :scheme: http
++    0x84,  // :path: /
++    0x41, 0x01, 0x78,  // :authority: x
++  ]));
++}
++
++const server = http2.createServer();
++
++server.listen(0, common.mustCall(() => {
++  const socket = net.connect(server.address().port);
++  let sent = false;
++
++  socket.on('connect', common.mustCall(() => {
++    socket.write(Buffer.concat([PREFACE, frame(4, 0, 0)]));
++  }));
++
++  socket.on('error', () => {});
++
++  socket.on('data', common.mustCallAtLeast(() => {
++    if (sent)
++      return;
++    sent = true;
++
++    socket.write(frame(4, 1, 0));
++    socket.write(headers(1));
++
++    setImmediate(() => {
++      socket.write(Buffer.concat([
++        goaway(0, 0),
++        headers(3),
++        headers(5),
++        headers(7),
++      ]));
++      setTimeout(() => socket.destroy(), common.platformTimeout(50));
++    });
++  }));
++
++  socket.on('close', common.mustCall(() => server.close()));
++}));

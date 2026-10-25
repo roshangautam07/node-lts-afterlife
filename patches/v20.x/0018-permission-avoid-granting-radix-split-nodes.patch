@@ -1,0 +1,109 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: RafaelGSS <rafael.nunu@hotmail.com>
+Date: Tue, 30 Jun 2026 18:07:04 -0300
+Subject: [PATCH 18/60] permission: avoid granting radix split nodes
+
+Signed-off-by: RafaelGSS <rafael.nunu@hotmail.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/911
+Refs: https://hackerone.com/reports/3761342
+CVE-ID: CVE-2026-58043
+(cherry picked from commit 440329f6247c8abb4c7cb4217e5a546ad41cd5ed)
+---
+ src/permission/fs_permission.h           |  7 ++--
+ test/parallel/test-permission-fs-read.js | 46 ++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+), 2 deletions(-)
+
+diff --git a/src/permission/fs_permission.h b/src/permission/fs_permission.h
+index 22b29b017e..7099dfa071 100644
+--- a/src/permission/fs_permission.h
++++ b/src/permission/fs_permission.h
+@@ -48,12 +48,13 @@ class FSPermission final : public PermissionBase {
+           children[label] = new Node(path_prefix);
+           return children[label];
+         }
++        bool child_was_end_node = child->IsEndNode();
+ 
+         // swap prefix
+         size_t i = 0;
+         size_t prefix_len = path_prefix.length();
+         for (; i < child->prefix.length(); ++i) {
+-          if (i > prefix_len || path_prefix[i] != child->prefix[i]) {
++          if (i >= prefix_len || path_prefix[i] != child->prefix[i]) {
+             std::string parent_prefix = child->prefix.substr(0, i);
+             std::string child_prefix = child->prefix.substr(i);
+ 
+@@ -65,7 +66,9 @@ class FSPermission final : public PermissionBase {
+             return split_child->CreateChild(path_prefix.substr(i));
+           }
+         }
+-        child->is_leaf = true;
++        if (child_was_end_node) {
++          child->is_leaf = true;
++        }
+         return child->CreateChild(path_prefix.substr(i));
+       }
+ 
+diff --git a/test/parallel/test-permission-fs-read.js b/test/parallel/test-permission-fs-read.js
+index 5be993c9df..a39c1a89dc 100644
+--- a/test/parallel/test-permission-fs-read.js
++++ b/test/parallel/test-permission-fs-read.js
+@@ -11,6 +11,7 @@ if (!common.hasCrypto) {
+ const assert = require('assert');
+ const fixtures = require('../common/fixtures');
+ const tmpdir = require('../common/tmpdir');
++const fs = require('fs');
+ const { spawnSync } = require('child_process');
+ const path = require('path');
+ 
+@@ -24,6 +25,51 @@ const commonPath = path.join(__filename, '../../common');
+   tmpdir.refresh();
+ }
+ 
++{
++  const boundaryFile = path.join(tmpdir.path, 'secret');
++  const grantedFiles = ['secret1', 'secret2', 'secret3']
++    .map((file) => path.join(tmpdir.path, file));
++
++  fs.writeFileSync(boundaryFile, 'protected');
++  for (const file of grantedFiles) {
++    fs.writeFileSync(file, 'granted');
++  }
++
++  const { status, stderr } = spawnSync(
++    process.execPath,
++    [
++      '--experimental-permission',
++      ...grantedFiles.map((file) => `--allow-fs-read=${file}`),
++      ...grantedFiles.map((file) => `--allow-fs-write=${file}`),
++      '-e',
++      `
++        const assert = require('assert');
++        const fs = require('fs');
++        const target = process.env.BOUNDARY_FILE;
++
++        assert.strictEqual(process.permission.has('fs.read', target), false);
++        assert.strictEqual(process.permission.has('fs.write', target), false);
++        assert.throws(
++          () => fs.readFileSync(target, 'utf8'),
++          { code: 'ERR_ACCESS_DENIED', permission: 'FileSystemRead' }
++        );
++        assert.throws(
++          () => fs.writeFileSync(target, 'modified'),
++          { code: 'ERR_ACCESS_DENIED', permission: 'FileSystemWrite' }
++        );
++      `,
++    ],
++    {
++      env: {
++        ...process.env,
++        BOUNDARY_FILE: boundaryFile,
++      },
++    }
++  );
++  assert.strictEqual(status, 0, stderr.toString());
++  assert.strictEqual(fs.readFileSync(boundaryFile, 'utf8'), 'protected');
++}
++
+ {
+   const { status, stderr } = spawnSync(
+     process.execPath,

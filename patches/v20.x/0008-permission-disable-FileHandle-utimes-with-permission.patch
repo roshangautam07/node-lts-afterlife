@@ -1,0 +1,70 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: RafaelGSS <rafael.nunu@hotmail.com>
+Date: Mon, 11 May 2026 18:44:39 -0300
+Subject: [PATCH 08/60] permission: disable FileHandle utimes with permission
+ model
+
+PR-URL: https://github.com/nodejs-private/node-private/pull/873
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+CVE-ID: CVE-2026-48935
+Refs: https://hackerone.com/reports/3625987
+(cherry picked from commit 28dcd388644c676b5b8149abfe18ec32cd010781)
+---
+ lib/internal/fs/promises.js                   |  3 ++
+ .../test-permission-fs-filehandle-utimes.js   | 33 +++++++++++++++++++
+ 2 files changed, 36 insertions(+)
+ create mode 100644 test/parallel/test-permission-fs-filehandle-utimes.js
+
+diff --git a/lib/internal/fs/promises.js b/lib/internal/fs/promises.js
+index 5823881c21..e30a858ce0 100644
+--- a/lib/internal/fs/promises.js
++++ b/lib/internal/fs/promises.js
+@@ -1149,6 +1149,9 @@ async function utimes(path, atime, mtime) {
+ }
+ 
+ async function futimes(handle, atime, mtime) {
++  if (permission.isEnabled()) {
++    throw new ERR_ACCESS_DENIED('futimes API is disabled when Permission Model is enabled.');
++  }
+   atime = toUnixTimestamp(atime, 'atime');
+   mtime = toUnixTimestamp(mtime, 'mtime');
+   return await PromisePrototypeThen(
+diff --git a/test/parallel/test-permission-fs-filehandle-utimes.js b/test/parallel/test-permission-fs-filehandle-utimes.js
+new file mode 100644
+index 0000000000..8cb0fb6bd6
+--- /dev/null
++++ b/test/parallel/test-permission-fs-filehandle-utimes.js
+@@ -0,0 +1,33 @@
++// Flags: --experimental-permission --allow-fs-read=*
++'use strict';
++
++const common = require('../common');
++const { isMainThread } = require('worker_threads');
++
++if (!isMainThread) {
++  common.skip('This test only works on a main thread');
++}
++
++if (!common.hasCrypto) {
++  common.skip('no crypto');
++}
++
++const assert = require('assert');
++const { open } = require('fs/promises');
++const fixtures = require('../common/fixtures');
++
++const regularFile = fixtures.path('permission', 'deny', 'regular-file.md');
++
++// FileHandle.utimes() must be blocked when the permission model is enabled,
++// consistent with fs.futimes() / fs.futimesSync().
++(async () => {
++  const fh = await open(regularFile, 'r');
++  try {
++    await assert.rejects(
++      fh.utimes(Date.now(), Date.now()),
++      common.expectsError({ code: 'ERR_ACCESS_DENIED' }),
++    );
++  } finally {
++    await fh.close();
++  }
++})().then(common.mustCall());

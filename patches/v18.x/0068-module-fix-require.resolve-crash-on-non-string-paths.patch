@@ -1,0 +1,84 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Aditi <62544124+Aditi-1400@users.noreply.github.com>
+Date: Tue, 11 Feb 2025 20:54:02 +0530
+Subject: [PATCH 68/74] module: fix require.resolve() crash on non-string paths
+
+Previously, `require.resolve()` could crash when:
+- The first parameter was a relative path and
+- The `paths` array contained non-string entries
+
+This commit fixes the issue by adding a check in
+`Module._findPath` to ensure all elements in `paths`
+are strings, and adding a validation in `stat` before
+calling `InternalModuleStat` to guard against
+non-string filenames.
+
+PR-URL: https://github.com/nodejs/node/pull/56942
+Fixes: https://github.com/nodejs/node/issues/47698
+Reviewed-By: Joyee Cheung <joyeec9h3@gmail.com>
+Reviewed-By: James M Snell <jasnell@gmail.com>
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+(cherry picked from commit 41f3dfd21bc68af28bed089bffc934fe1d1ccdf2)
+---
+ lib/internal/modules/cjs/loader.js             |  7 +++++++
+ .../test-require-resolve-invalid-paths.js      | 18 ++++++++++++++++++
+ 2 files changed, 25 insertions(+)
+ create mode 100644 test/parallel/test-require-resolve-invalid-paths.js
+
+diff --git a/lib/internal/modules/cjs/loader.js b/lib/internal/modules/cjs/loader.js
+index 69473df97e..49cc4c483c 100644
+--- a/lib/internal/modules/cjs/loader.js
++++ b/lib/internal/modules/cjs/loader.js
+@@ -129,6 +129,7 @@ let hasLoadedAnyUserCJSModule = false;
+ 
+ const {
+   codes: {
++    ERR_INVALID_ARG_TYPE,
+     ERR_INVALID_ARG_VALUE,
+     ERR_INVALID_MODULE_SPECIFIER,
+     ERR_REQUIRE_ESM,
+@@ -182,6 +183,9 @@ function internalRequire(module, id) {
+  * @param {string} filename Absolute path to the file
+  */
+ function stat(filename) {
++  // Guard against internal bugs where a non-string filename is passed in by mistake.
++  assert(typeof filename === 'string');
++
+   filename = path.toNamespacedPath(filename);
+   if (statCache !== null) {
+     const result = statCache.get(filename);
+@@ -656,6 +660,9 @@ Module._findPath = function(request, paths, isMain) {
+   for (let i = 0; i < paths.length; i++) {
+     // Don't search further if path doesn't exist and request is inside the path
+     const curPath = paths[i];
++    if (typeof curPath !== 'string') {
++      throw new ERR_INVALID_ARG_TYPE('paths', 'array of strings', paths);
++    }
+     if (insidePath && curPath && _stat(curPath) < 1) {
+       continue;
+     }
+diff --git a/test/parallel/test-require-resolve-invalid-paths.js b/test/parallel/test-require-resolve-invalid-paths.js
+new file mode 100644
+index 0000000000..efe929d0c3
+--- /dev/null
++++ b/test/parallel/test-require-resolve-invalid-paths.js
+@@ -0,0 +1,18 @@
++'use strict';
++
++require('../common');
++const assert = require('assert');
++
++// Test invalid `paths` entries: Ensure non-string entries throw an error
++{
++  const paths = [1, false, null, undefined, () => {}, {}];
++  paths.forEach((value) => {
++    assert.throws(
++      () => require.resolve('.', { paths: [value] }),
++      {
++        name: 'TypeError',
++        code: 'ERR_INVALID_ARG_TYPE',
++      }
++    );
++  });
++}

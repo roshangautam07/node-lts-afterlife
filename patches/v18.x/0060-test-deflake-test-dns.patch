@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Luigi Pinca <luigipinca@gmail.com>
+Date: Sat, 14 Sep 2024 16:09:11 +0200
+Subject: [PATCH 60/74] test: deflake test-dns
+
+Prevent responses from being cached.
+
+Fixes: https://github.com/nodejs/node/issues/54124
+PR-URL: https://github.com/nodejs/node/pull/54902
+Reviewed-By: Michael Dawson <midawson@redhat.com>
+Reviewed-By: James M Snell <jasnell@gmail.com>
+(cherry picked from commit 597bc14c90372ccef3120b09facaa6e61d679ecc)
+---
+ test/parallel/test-dns.js | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/test/parallel/test-dns.js b/test/parallel/test-dns.js
+index 085380b905..b4326679c6 100644
+--- a/test/parallel/test-dns.js
++++ b/test/parallel/test-dns.js
+@@ -361,11 +361,11 @@ assert.throws(() => {
+   const cases = [
+     { method: 'resolveAny',
+       answers: [
+-        { type: 'A', address: '1.2.3.4', ttl: 3333333333 },
+-        { type: 'AAAA', address: '::42', ttl: 3333333333 },
+-        { type: 'MX', priority: 42, exchange: 'foobar.com', ttl: 3333333333 },
+-        { type: 'NS', value: 'foobar.org', ttl: 3333333333 },
+-        { type: 'PTR', value: 'baz.org', ttl: 3333333333 },
++        { type: 'A', address: '1.2.3.4', ttl: 0 },
++        { type: 'AAAA', address: '::42', ttl: 0 },
++        { type: 'MX', priority: 42, exchange: 'foobar.com', ttl: 0 },
++        { type: 'NS', value: 'foobar.org', ttl: 0 },
++        { type: 'PTR', value: 'baz.org', ttl: 0 },
+         {
+           type: 'SOA',
+           nsname: 'ns1.example.com',
+@@ -380,11 +380,11 @@ assert.throws(() => {
+ 
+     { method: 'resolve4',
+       options: { ttl: true },
+-      answers: [ { type: 'A', address: '1.2.3.4', ttl: 3333333333 } ] },
++      answers: [ { type: 'A', address: '1.2.3.4', ttl: 0 } ] },
+ 
+     { method: 'resolve6',
+       options: { ttl: true },
+-      answers: [ { type: 'AAAA', address: '::42', ttl: 3333333333 } ] },
++      answers: [ { type: 'AAAA', address: '::42', ttl: 0 } ] },
+ 
+     { method: 'resolveSoa',
+       answers: [
+@@ -415,7 +415,7 @@ assert.throws(() => {
+         (answer) => Object.assign({ domain }, answer)
+       ),
+     }), port, address);
+-  }, cases.length));
++  }, cases.length * 2 - 1));
+ 
+   server.bind(0, common.mustCall(() => {
+     const address = server.address();

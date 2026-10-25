@@ -1,0 +1,269 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Martin Slota <46676886+martinslota@users.noreply.github.com>
+Date: Fri, 6 Feb 2026 23:29:11 +0700
+Subject: [PATCH 55/74] http: fix keep-alive socket reuse race in
+ requestOnFinish
+
+When the HTTP response ends before the request's 'finish' event fires,
+responseOnEnd() and requestOnFinish() can both call responseKeepAlive(),
+corrupting the socket that the agent may have already handed to another
+request.
+
+This commit adds a !req.destroyed guard to requestOnFinish() so the
+second call is skipped when the socket has already been released.
+
+Fixes: https://github.com/nodejs/node/issues/60001
+PR-URL: https://github.com/nodejs/node/pull/61710
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+(cherry picked from commit ee02966ffcfe8891e0762fad0577fbb047ec6e02)
+---
+ lib/_http_client.js                           |   6 +-
+ .../test-http-expect-continue-reuse-race.js   | 117 ++++++++++++++++++
+ .../test-https-expect-continue-reuse-race.js  |  97 +++++++++++++++
+ 3 files changed, 219 insertions(+), 1 deletion(-)
+ create mode 100644 test/parallel/test-http-expect-continue-reuse-race.js
+ create mode 100644 test/parallel/test-https-expect-continue-reuse-race.js
+
+diff --git a/lib/_http_client.js b/lib/_http_client.js
+index 5747760b94..e9633c38ba 100644
+--- a/lib/_http_client.js
++++ b/lib/_http_client.js
+@@ -790,7 +790,11 @@ function responseOnTimeout() {
+ function requestOnFinish() {
+   const req = this;
+ 
+-  if (req.shouldKeepAlive && req._ended)
++  // If the response ends before this request finishes writing, `responseOnEnd()`
++  // already released the socket. When `finish` fires later, that socket may
++  // belong to a different request, so only call `responseKeepAlive()` when the
++  // original request is still alive (`!req.destroyed`).
++  if (req.shouldKeepAlive && req._ended && !req.destroyed)
+     responseKeepAlive(req);
+ }
+ 
+diff --git a/test/parallel/test-http-expect-continue-reuse-race.js b/test/parallel/test-http-expect-continue-reuse-race.js
+new file mode 100644
+index 0000000000..d56319d0e6
+--- /dev/null
++++ b/test/parallel/test-http-expect-continue-reuse-race.js
+@@ -0,0 +1,117 @@
++'use strict';
++
++// Regression test for a keep-alive socket reuse race condition.
++//
++// The race is between responseOnEnd() and requestOnFinish(), both of which
++// can call responseKeepAlive().  The window is: req.end() has been called,
++// the socket write has completed (writableFinished true), but the write
++// callback that emits the 'finish' event has not fired yet.
++//
++// With plain HTTP the window is normally too narrow to hit.  This test
++// widens it by delaying every client-socket write *callback* by a few
++// milliseconds (the actual I/O is not delayed, so writableFinished becomes
++// true while the 'finish'-emitting callback is still pending).
++//
++// With Expect: 100-continue, the server responds quickly while the client
++// delays req.end() just slightly (setTimeout 0), creating the perfect
++// timing for the response to arrive in that window.
++//
++// On unpatched Node, the double responseKeepAlive() call corrupts the
++// socket by stripping a subsequent request's listeners and emitting a
++// spurious 'free' event, causing requests to hang / time out.
++
++const common = require('../common');
++const assert = require('assert');
++const http = require('http');
++
++const REQUEST_COUNT = 100;
++const agent = new http.Agent({ keepAlive: true, maxSockets: 1 });
++
++// Delay every write *callback* on the client socket so that
++// socket.writableLength drops to 0 (writableFinished becomes true) before
++// the callback that ultimately emits the 'finish' event fires.  With
++// HTTPS the TLS layer provides this gap naturally; for plain HTTP we
++// need to create it artificially.
++const patchedSockets = new WeakSet();
++function patchSocket(socket) {
++  if (patchedSockets.has(socket)) return;
++  patchedSockets.add(socket);
++  const delay = 5;
++  const origWrite = socket.write;
++  socket.write = function(chunk, encoding, cb) {
++    if (typeof encoding === 'function') {
++      cb = encoding;
++      encoding = null;
++    }
++    if (typeof cb === 'function') {
++      const orig = cb;
++      cb = (...args) => setTimeout(() => orig(...args), delay);
++    }
++    return origWrite.call(this, chunk, encoding, cb);
++  };
++}
++
++const server = http.createServer(common.mustCall((req, res) => {
++  req.on('error', common.mustNotCall());
++  res.writeHead(200);
++  res.end();
++}, REQUEST_COUNT));
++
++server.listen(0, common.mustCall(() => {
++  const { port } = server.address();
++
++  async function run() {
++    try {
++      for (let i = 0; i < REQUEST_COUNT; i++) {
++        await sendRequest(port);
++      }
++    } finally {
++      agent.destroy();
++      server.close();
++    }
++  }
++
++  run().then(common.mustCall());
++}));
++
++function sendRequest(port) {
++  let timeout;
++  const promise = new Promise((resolve, reject) => {
++    function done(err) {
++      clearTimeout(timeout);
++      if (err)
++        reject(err);
++      else
++        resolve();
++    }
++
++    const req = http.request({
++      port,
++      host: '127.0.0.1',
++      method: 'POST',
++      agent,
++      headers: {
++        'Content-Length': '0',
++        'Expect': '100-continue',
++      },
++    }, common.mustCall((res) => {
++      assert.strictEqual(res.statusCode, 200);
++      res.resume();
++      res.once('end', done);
++      res.once('error', done);
++    }));
++
++    req.on('socket', patchSocket);
++
++    timeout = setTimeout(() => {
++      const err = new Error('request timed out');
++      req.destroy(err);
++      done(err);
++    }, common.platformTimeout(5000));
++
++    req.once('error', done);
++
++    setTimeout(() => req.end(Buffer.alloc(0)), 0);
++  });
++  return promise.finally(() => clearTimeout(timeout));
++}
+diff --git a/test/parallel/test-https-expect-continue-reuse-race.js b/test/parallel/test-https-expect-continue-reuse-race.js
+new file mode 100644
+index 0000000000..cc754477b7
+--- /dev/null
++++ b/test/parallel/test-https-expect-continue-reuse-race.js
+@@ -0,0 +1,97 @@
++'use strict';
++
++// Regression test for a keep-alive socket reuse race condition.
++//
++// The race is between responseOnEnd() and requestOnFinish(), both of which
++// can call responseKeepAlive().  The window is: req.end() has been called,
++// the socket write has completed (writableFinished true), but the write
++// callback that emits the 'finish' event has not fired yet.
++//
++// HTTPS widens this window because the TLS layer introduces async
++// indirection between the actual write completion and the JS callback.
++//
++// With Expect: 100-continue, the server responds quickly while the client
++// delays req.end() just slightly (setTimeout 0), creating the perfect
++// timing for the response to arrive in that window.
++//
++// On unpatched Node, the double responseKeepAlive() call corrupts the
++// socket by stripping a subsequent request's listeners and emitting a
++// spurious 'free' event, causing requests to hang / time out.
++
++const common = require('../common');
++
++if (!common.hasCrypto)
++  common.skip('missing crypto');
++
++const assert = require('assert');
++const https = require('https');
++const fixtures = require('../common/fixtures');
++
++const REQUEST_COUNT = 100;
++const agent = new https.Agent({ keepAlive: true, maxSockets: 1 });
++
++const key = fixtures.readKey('agent1-key.pem');
++const cert = fixtures.readKey('agent1-cert.pem');
++const server = https.createServer({ key, cert }, common.mustCall((req, res) => {
++  req.on('error', common.mustNotCall());
++  res.writeHead(200);
++  res.end();
++}, REQUEST_COUNT));
++
++server.listen(0, common.mustCall(() => {
++  const { port } = server.address();
++
++  async function run() {
++    try {
++      for (let i = 0; i < REQUEST_COUNT; i++) {
++        await sendRequest(port);
++      }
++    } finally {
++      agent.destroy();
++      server.close();
++    }
++  }
++
++  run().then(common.mustCall());
++}));
++
++function sendRequest(port) {
++  let timeout;
++  const promise = new Promise((resolve, reject) => {
++    function done(err) {
++      clearTimeout(timeout);
++      if (err)
++        reject(err);
++      else
++        resolve();
++    }
++
++    const req = https.request({
++      port,
++      host: '127.0.0.1',
++      rejectUnauthorized: false,
++      method: 'POST',
++      agent,
++      headers: {
++        'Content-Length': '0',
++        'Expect': '100-continue',
++      },
++    }, common.mustCall((res) => {
++      assert.strictEqual(res.statusCode, 200);
++      res.resume();
++      res.once('end', done);
++      res.once('error', done);
++    }));
++
++    timeout = setTimeout(() => {
++      const err = new Error('request timed out');
++      req.destroy(err);
++      done(err);
++    }, common.platformTimeout(5000));
++
++    req.once('error', done);
++
++    setTimeout(() => req.end(Buffer.alloc(0)), 0);
++  });
++  return promise.finally(() => clearTimeout(timeout));
++}

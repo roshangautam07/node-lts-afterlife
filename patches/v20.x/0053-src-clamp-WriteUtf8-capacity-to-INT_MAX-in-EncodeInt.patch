@@ -1,0 +1,109 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: semimikoh <ejffjeosms@gmail.com>
+Date: Wed, 8 Apr 2026 07:50:18 +0900
+Subject: [PATCH 53/60] src: clamp WriteUtf8 capacity to INT_MAX in EncodeInto
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In TextEncoder.encodeInto, the destination buffer's byte length is
+read as a size_t but then implicitly narrowed to int when passed as
+the capacity argument to v8::String::WriteUtf8. When the destination
+view is larger than INT_MAX (2,147,483,647 bytes), the narrowing
+conversion underflows to a negative value, V8 treats it as "no
+capacity", and writes 0 bytes - returning { read: 0, written: 0 }
+even though the buffer has plenty of room.
+
+Clamp the capacity to INT_MAX before passing it to WriteUtf8. This
+is sufficient because the source string in encodeInto is bounded in
+practice and never requires more than INT_MAX bytes to encode; only
+the destination view length can exceed INT_MAX.
+
+This issue is already fixed on main and v24.x as a side effect of
+PR #58070, which migrated to the non-deprecated WriteUtf8V2 method
+whose capacity parameter is size_t. WriteUtf8V2 is not available in
+v22.x's V8 version, so this minimal patch fixes only the EncodeInto
+path instead of backporting the full migration.
+
+Refs: https://github.com/nodejs/node/pull/58070
+Fixes: https://github.com/nodejs/node/issues/62610
+Signed-off-by: semimikoh <ejffjeosms@gmail.com>
+PR-URL: https://github.com/nodejs/node/pull/62621
+Reviewed-By: René <contact.9a5d6388@renegade334.me.uk>
+Reviewed-By: Marco Ippolito <marcoippolito54@gmail.com>
+(cherry picked from commit 578a9a9230615bece3a3b4708f1591e6529b4b88)
+---
+ src/encoding_binding.cc                       |  4 +-
+ .../test-whatwg-encoding-encodeinto-large.js  | 41 +++++++++++++++++++
+ 2 files changed, 44 insertions(+), 1 deletion(-)
+ create mode 100644 test/parallel/test-whatwg-encoding-encodeinto-large.js
+
+diff --git a/src/encoding_binding.cc b/src/encoding_binding.cc
+index 885a0d0723..97857a75ff 100644
+--- a/src/encoding_binding.cc
++++ b/src/encoding_binding.cc
+@@ -8,6 +8,8 @@
+ #include "string_bytes.h"
+ #include "v8.h"
+ 
++#include <algorithm>
++#include <climits>
+ #include <cstdint>
+ 
+ namespace node {
+@@ -103,7 +105,7 @@ void BindingData::EncodeInto(const FunctionCallbackInfo<Value>& args) {
+   int written = source->WriteUtf8(
+       isolate,
+       write_result,
+-      dest_length,
++      std::min(dest_length, static_cast<size_t>(INT_MAX)),
+       &nchars,
+       String::NO_NULL_TERMINATION | String::REPLACE_INVALID_UTF8);
+ 
+diff --git a/test/parallel/test-whatwg-encoding-encodeinto-large.js b/test/parallel/test-whatwg-encoding-encodeinto-large.js
+new file mode 100644
+index 0000000000..6636043067
+--- /dev/null
++++ b/test/parallel/test-whatwg-encoding-encodeinto-large.js
+@@ -0,0 +1,41 @@
++'use strict';
++
++const common = require('../common');
++
++common.skipIf32Bits();
++
++const assert = require('assert');
++
++const encoder = new TextEncoder();
++const source = 'a\xFF\u6211\u{1D452}';
++const expected = encoder.encode(source);
++
++const size = 2 ** 31 + expected.length;
++const offset = expected.length - 1;
++let dest;
++
++try {
++  dest = new Uint8Array(size);
++} catch (e) {
++  if (e.code === 'ERR_MEMORY_ALLOCATION_FAILED' ||
++      /Array buffer allocation failed/.test(e.message)) {
++    common.skip('insufficient space for Uint8Array allocation');
++  }
++  throw e;
++}
++
++const large = encoder.encodeInto(source, dest.subarray(offset));
++assert.deepStrictEqual(large, {
++  read: source.length,
++  written: expected.length,
++});
++assert.deepStrictEqual(dest.slice(offset, offset + expected.length), expected);
++
++const bounded = encoder.encodeInto(source,
++                                   dest.subarray(offset,
++                                                 offset + expected.length));
++assert.deepStrictEqual(bounded, {
++  read: source.length,
++  written: expected.length,
++});
++assert.deepStrictEqual(dest.slice(offset, offset + expected.length), expected);

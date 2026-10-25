@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: theanarkh <theratliter@gmail.com>
+Date: Tue, 8 Jul 2025 17:42:22 +0800
+Subject: [PATCH 65/74] dns: fix parse memory leaky
+
+PR-URL: https://github.com/nodejs/node/pull/58973
+Reviewed-By: Zeyu "Alex" Yang <himself65@outlook.com>
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+Reviewed-By: Anna Henningsen <anna@addaleax.net>
+Reviewed-By: Marco Ippolito <marcoippolito54@gmail.com>
+Reviewed-By: James M Snell <jasnell@gmail.com>
+(cherry picked from commit cded8e7e7774a6e35d0e37a46b2e295ca6e2d290)
+---
+ src/cares_wrap.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/cares_wrap.cc b/src/cares_wrap.cc
+index fa667e3af3..e7e61c0ab7 100644
+--- a/src/cares_wrap.cc
++++ b/src/cares_wrap.cc
+@@ -1342,6 +1342,8 @@ int SoaTraits::Parse(
+   if (status != ARES_SUCCESS)
+     return status;
+ 
++  auto cleanup = OnScopeLeave([&]() { ares_free_data(soa_out); });
++
+   Local<Object> soa_record = Object::New(env->isolate());
+ 
+   soa_record->Set(env->context(),
+@@ -1368,8 +1370,6 @@ int SoaTraits::Parse(
+                   Integer::NewFromUnsigned(
+                       env->isolate(), soa_out->minttl)).Check();
+ 
+-  ares_free_data(soa_out);
+-
+   wrap->CallOnComplete(soa_record);
+   return ARES_SUCCESS;
+ }

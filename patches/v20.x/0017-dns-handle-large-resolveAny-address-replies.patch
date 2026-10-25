@@ -1,0 +1,218 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: RafaelGSS <rafael.nunu@hotmail.com>
+Date: Sun, 19 Jul 2026 11:38:25 -0300
+Subject: [PATCH 17/60] dns: handle large resolveAny address replies
+
+Refs: https://hackerone.com/reports/3795657
+Signed-off-by: RafaelGSS <rafael.nunu@hotmail.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/929
+Reviewed-By: Matteo Collina <matteo.collina@gmail.com>
+CVE-ID: CVE-2026-58042
+(cherry picked from commit 22efc051a3c3b3bbddbb3cb06ce1ca5775923c01)
+---
+ src/cares_wrap.cc                             | 51 ++++++++++----
+ .../test-dns-resolveany-ttl-overflow.js       | 69 +++++++++++++++++++
+ 2 files changed, 106 insertions(+), 14 deletions(-)
+ create mode 100644 test/parallel/test-dns-resolveany-ttl-overflow.js
+
+diff --git a/src/cares_wrap.cc b/src/cares_wrap.cc
+index 24c7c36256..2f3566e783 100644
+--- a/src/cares_wrap.cc
++++ b/src/cares_wrap.cc
+@@ -195,6 +195,23 @@ Local<Array> AddrTTLToArray(
+   return Array::New(env->isolate(), ttls.out(), naddrttls);
+ }
+ 
++int GetAnswerCountForTTLBuffer(const unsigned char* buf, int len) {
++  static constexpr int kDNSAnswerCountOffset = 6;
++  static constexpr int kAresDefaultTTLBufferLength = 256;
++  if (len <= kDNSAnswerCountOffset + 1) {
++    return kAresDefaultTTLBufferLength;
++  }
++
++  const int answer_count = (static_cast<int>(buf[kDNSAnswerCountOffset]) << 8) |
++                           static_cast<int>(buf[kDNSAnswerCountOffset + 1]);
++  return answer_count == 0 ? 1 : answer_count;
++}
++
++template <typename T>
++std::vector<T> MakeAddrTTLBuffer(const unsigned char* buf, int len) {
++  return std::vector<T>(GetAnswerCountForTTLBuffer(buf, len));
++}
++
+ int ParseGeneralReply(
+     Environment* env,
+     const unsigned char* buf,
+@@ -913,8 +930,9 @@ int AnyTraits::Parse(
+   int type, status, old_count;
+ 
+   /* Parse A records or CNAME records */
+-  ares_addrttl addrttls[256];
+-  int naddrttls = arraysize(addrttls);
++  std::vector<ares_addrttl> addrttls =
++      MakeAddrTTLBuffer<ares_addrttl>(buf, len);
++  int naddrttls = static_cast<int>(addrttls.size());
+ 
+   type = ns_t_cname_or_a;
+   status = ParseGeneralReply(env,
+@@ -922,7 +940,7 @@ int AnyTraits::Parse(
+                              len,
+                              &type,
+                              ret,
+-                             addrttls,
++                             addrttls.data(),
+                              &naddrttls);
+   uint32_t a_count = ret->Length();
+   if (status != ARES_SUCCESS && status != ARES_ENODATA)
+@@ -958,8 +976,9 @@ int AnyTraits::Parse(
+   }
+ 
+   /* Parse AAAA records */
+-  ares_addr6ttl addr6ttls[256];
+-  int naddr6ttls = arraysize(addr6ttls);
++  std::vector<ares_addr6ttl> addr6ttls =
++      MakeAddrTTLBuffer<ares_addr6ttl>(buf, len);
++  int naddr6ttls = static_cast<int>(addr6ttls.size());
+ 
+   type = ns_t_aaaa;
+   status = ParseGeneralReply(env,
+@@ -967,7 +986,7 @@ int AnyTraits::Parse(
+                              len,
+                              &type,
+                              ret,
+-                             addr6ttls,
++                             addr6ttls.data(),
+                              &naddr6ttls);
+   uint32_t aaaa_count = ret->Length() - a_count;
+   if (status != ARES_SUCCESS && status != ARES_ENODATA)
+@@ -1076,8 +1095,9 @@ int ATraits::Parse(
+   HandleScope handle_scope(env->isolate());
+   Context::Scope context_scope(env->context());
+ 
+-  ares_addrttl addrttls[256];
+-  int naddrttls = arraysize(addrttls), status;
++  std::vector<ares_addrttl> addrttls =
++      MakeAddrTTLBuffer<ares_addrttl>(buf, len);
++  int naddrttls = static_cast<int>(addrttls.size()), status;
+   Local<Array> ret = Array::New(env->isolate());
+ 
+   int type = ns_t_a;
+@@ -1086,12 +1106,13 @@ int ATraits::Parse(
+                              len,
+                              &type,
+                              ret,
+-                             addrttls,
++                             addrttls.data(),
+                              &naddrttls);
+   if (status != ARES_SUCCESS)
+     return status;
+ 
+-  Local<Array> ttls = AddrTTLToArray<ares_addrttl>(env, addrttls, naddrttls);
++  Local<Array> ttls =
++      AddrTTLToArray<ares_addrttl>(env, addrttls.data(), naddrttls);
+ 
+   wrap->CallOnComplete(ret, ttls);
+   return ARES_SUCCESS;
+@@ -1110,8 +1131,9 @@ int AaaaTraits::Parse(
+   HandleScope handle_scope(env->isolate());
+   Context::Scope context_scope(env->context());
+ 
+-  ares_addr6ttl addrttls[256];
+-  int naddrttls = arraysize(addrttls), status;
++  std::vector<ares_addr6ttl> addrttls =
++      MakeAddrTTLBuffer<ares_addr6ttl>(buf, len);
++  int naddrttls = static_cast<int>(addrttls.size()), status;
+   Local<Array> ret = Array::New(env->isolate());
+ 
+   int type = ns_t_aaaa;
+@@ -1120,12 +1142,13 @@ int AaaaTraits::Parse(
+                              len,
+                              &type,
+                              ret,
+-                             addrttls,
++                             addrttls.data(),
+                              &naddrttls);
+   if (status != ARES_SUCCESS)
+     return status;
+ 
+-  Local<Array> ttls = AddrTTLToArray<ares_addr6ttl>(env, addrttls, naddrttls);
++  Local<Array> ttls =
++      AddrTTLToArray<ares_addr6ttl>(env, addrttls.data(), naddrttls);
+ 
+   wrap->CallOnComplete(ret, ttls);
+   return ARES_SUCCESS;
+diff --git a/test/parallel/test-dns-resolveany-ttl-overflow.js b/test/parallel/test-dns-resolveany-ttl-overflow.js
+new file mode 100644
+index 0000000000..c8cc4fbc95
+--- /dev/null
++++ b/test/parallel/test-dns-resolveany-ttl-overflow.js
+@@ -0,0 +1,69 @@
++'use strict';
++const common = require('../common');
++const dnstools = require('../common/dns');
++const assert = require('assert');
++const dgram = require('dgram');
++const dns = require('dns');
++
++const dnsPromises = dns.promises;
++
++const kRecordCount = 257;
++const kADomain = 'many-a.example.org';
++
++const server = dgram.createSocket('udp4');
++
++server.on('message', common.mustCall((msg, { address, port }) => {
++  const parsed = dnstools.parseDNSPacket(msg);
++  const question = parsed.questions[0];
++  const { domain } = question;
++
++  assert.strictEqual(question.type, 'ANY');
++  assert.strictEqual(domain, kADomain);
++
++  server.send(dnstools.writeDNSPacket({
++    id: parsed.id,
++    questions: parsed.questions,
++    answers: createARecords(domain),
++  }), port, address);
++}, 2));
++
++server.bind(0, common.mustCall(async () => {
++  const { port } = server.address();
++  const callbackResolver = new dns.Resolver({ timeout: 1000, tries: 1 });
++  const promiseResolver = new dnsPromises.Resolver({ timeout: 1000, tries: 1 });
++  callbackResolver.setServers([`127.0.0.1:${port}`]);
++  promiseResolver.setServers([`127.0.0.1:${port}`]);
++
++  validateRecords(await promiseResolver.resolveAny(kADomain), 'A');
++  validateRecords(await resolveAny(callbackResolver, kADomain), 'A');
++
++  server.close();
++}));
++
++function createARecords(domain) {
++  return Array.from({ length: kRecordCount }, (_, i) => ({
++    type: 'A',
++    address: `10.0.${i >> 8}.${i & 0xff}`,
++    ttl: 60 + i,
++    domain,
++  }));
++}
++
++function resolveAny(resolver, domain) {
++  return new Promise((resolve) => {
++    resolver.resolveAny(domain, common.mustSucceed(resolve));
++  });
++}
++
++function validateRecords(records, type) {
++  assert.strictEqual(records.length, kRecordCount);
++  for (const record of records) {
++    assert.strictEqual(record.type, type);
++  }
++
++  assert.strictEqual(records[0].ttl, 60);
++  assert.strictEqual(records[255].ttl, 315);
++  assert.strictEqual(records[256].ttl, 316);
++  assert.strictEqual(records[0].address, '10.0.0.0');
++  assert.strictEqual(records[256].address, '10.0.1.0');
++}

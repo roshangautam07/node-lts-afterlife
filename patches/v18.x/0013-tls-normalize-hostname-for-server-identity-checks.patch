@@ -1,0 +1,82 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Mon, 11 May 2026 13:02:28 +0200
+Subject: [PATCH 13/74] tls: normalize hostname for server identity checks
+
+Signed-off-by: Matteo Collina <hello@matteocollina.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/869
+Backport-PR-URL: https://github.com/nodejs-private/node-private/pull/893
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+CVE-ID: CVE-2026-48618
+Refs: https://hackerone.com/reports/3688064
+(cherry picked from commit 2197a47144f3356ab451c5dcd858a49eb5957a70)
+(cherry picked from commit 7854faf34e98d802cd76e852f49f9c36928f21b1)
+---
+ lib/tls.js                                      | 15 ++++++++++-----
+ test/parallel/test-tls-check-server-identity.js |  9 +++++++++
+ 2 files changed, 19 insertions(+), 5 deletions(-)
+
+diff --git a/lib/tls.js b/lib/tls.js
+index b78f56d49a..8039129b6e 100644
+--- a/lib/tls.js
++++ b/lib/tls.js
+@@ -66,6 +66,7 @@ const { canonicalizeIP } = internalBinding('cares_wrap');
+ const _tls_common = require('_tls_common');
+ const _tls_wrap = require('_tls_wrap');
+ const { createSecurePair } = require('internal/tls/secure-pair');
++const { domainToASCII } = require('internal/url');
+ 
+ // Allow {CLIENT_RENEG_LIMIT} client-initiated session renegotiations
+ // every {CLIENT_RENEG_WINDOW} seconds. An error event is emitted if more
+@@ -284,6 +285,11 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
+   const ips = [];
+ 
+   hostname = '' + hostname;
++  const hostnameASCII = domainToASCII(hostname);
++
++  // Remove trailing dots for error messages and matching.
++  hostname = unfqdn(hostname);
++  const hostnameASCIIWithoutFQDN = unfqdn(hostnameASCII);
+ 
+   if (altNames) {
+     const splitAltNames = StringPrototypeIncludes(altNames, '"') ?
+@@ -301,15 +307,14 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
+   let valid = false;
+   let reason = 'Unknown reason';
+ 
+-  hostname = unfqdn(hostname);  // Remove trailing dot for error messages.
+-
+-  if (net.isIP(hostname)) {
+-    valid = ArrayPrototypeIncludes(ips, canonicalizeIP(hostname));
++  if (net.isIP(hostnameASCIIWithoutFQDN)) {
++    valid = ArrayPrototypeIncludes(ips,
++                                   canonicalizeIP(hostnameASCIIWithoutFQDN));
+     if (!valid)
+       reason = `IP: ${hostname} is not in the cert's list: ` +
+                ArrayPrototypeJoin(ips, ', ');
+   } else if (dnsNames.length > 0 || subject?.CN) {
+-    const hostParts = splitHost(hostname);
++    const hostParts = splitHost(hostnameASCIIWithoutFQDN);
+     const wildcard = (pattern) => check(hostParts, pattern, true);
+ 
+     if (dnsNames.length > 0) {
+diff --git a/test/parallel/test-tls-check-server-identity.js b/test/parallel/test-tls-check-server-identity.js
+index fe81fc5285..3dc0275ec6 100644
+--- a/test/parallel/test-tls-check-server-identity.js
++++ b/test/parallel/test-tls-check-server-identity.js
+@@ -313,6 +313,15 @@ const tests = [
+     error: 'Host: localhost. is not in the cert\'s altnames: ' +
+            'DNS:a.com'
+   },
++  {
++    host: 'foo。bar.example.com',
++    cert: {
++      subjectaltname: 'DNS:*.example.com',
++      subject: {}
++    },
++    error: 'Host: foo。bar.example.com. is not in the cert\'s altnames: ' +
++           'DNS:*.example.com'
++  },
+   // IDNA
+   {
+     host: 'xn--bcher-kva.example.com',

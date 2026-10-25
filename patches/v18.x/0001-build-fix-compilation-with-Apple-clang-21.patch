@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Roshan Gautam <roshangautam07@gmail.com>
+Date: Sun, 25 Oct 2026 13:04:04 +0545
+Subject: [PATCH 01/74] build: fix compilation with Apple clang 21
+
+Building the unmodified v18.20.8 tree with Xcode 26 (Apple clang 21,
+macOS 26 SDK) fails in V8's bundled zlib (target v8_zlib):
+
+  deps/v8/third_party/zlib/zutil.h:151:33: note: expanded from macro
+      'fdopen'
+  #  define fdopen(fd,mode) NULL /* No fdopen() */
+  MacOSX.sdk/usr/include/_stdio.h:322:7: error: expected identifier
+      or '('
+  FILE *fdopen(int, const char *) __DARWIN_ALIAS_STARTING(...);
+
+zutil.h treats any target that defines TARGET_OS_MAC as classic Mac OS
+and defines fdopen() away as a macro. With the newer SDK,
+TargetConditionals.h (which defines TARGET_OS_MAC) is already visible
+when zutil.h is processed, and zutil.c includes zutil.h before gzguts.h
+pulls in <stdio.h>, so the SDK's fdopen() declaration is macro-expanded
+into invalid code.
+
+Apply the same fix upstream zlib made (and that Node.js' own deps/zlib
+already carries): only key the classic Mac OS block off MACOS, not
+TARGET_OS_MAC. macOS builds still get OS_CODE 19 from the existing
+__APPLE__ block further down, so the only behavioural change is that
+the real fdopen() is used. Only the copy under deps/v8 is affected;
+deps/zlib already has this change.
+
+No other source changes were needed for the unpatched v18.20.8 tree to
+build with this toolchain.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ deps/v8/third_party/zlib/zutil.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/deps/v8/third_party/zlib/zutil.h b/deps/v8/third_party/zlib/zutil.h
+index ec1993f3f7..b8337eb70e 100644
+--- a/deps/v8/third_party/zlib/zutil.h
++++ b/deps/v8/third_party/zlib/zutil.h
+@@ -141,7 +141,7 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
+ #  endif
+ #endif
+ 
+-#if defined(MACOS) || defined(TARGET_OS_MAC)
++#if defined(MACOS)
+ #  define OS_CODE  7
+ #  ifndef Z_SOLO
+ #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os

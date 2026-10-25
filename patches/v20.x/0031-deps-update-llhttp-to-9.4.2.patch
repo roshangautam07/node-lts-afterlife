@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Antoine du Hamel <duhamelantoine1995@gmail.com>
+Date: Tue, 9 Jun 2026 14:28:34 +0200
+Subject: [PATCH 31/60] deps: update llhttp to 9.4.2
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+PR-URL: https://github.com/nodejs-private/node-private/pull/890
+Reviewed-By: Tobias Nießen <tniessen@tnie.de>
+(cherry picked from commit ad8a10c1bb9de643220f483b14faf5045b0b3d20)
+---
+ deps/llhttp/CMakeLists.txt   | 2 +-
+ deps/llhttp/include/llhttp.h | 2 +-
+ deps/llhttp/src/llhttp.c     | 8 ++++----
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/deps/llhttp/CMakeLists.txt b/deps/llhttp/CMakeLists.txt
+index ebcddbcd47..856f9fd09a 100644
+--- a/deps/llhttp/CMakeLists.txt
++++ b/deps/llhttp/CMakeLists.txt
+@@ -1,7 +1,7 @@
+ cmake_minimum_required(VERSION 3.25.0)
+ cmake_policy(SET CMP0069 NEW)
+ 
+-project(llhttp VERSION 9.4.1)
++project(llhttp VERSION 9.4.2)
+ include(GNUInstallDirs)
+ include(CMakePackageConfigHelpers)
+ 
+diff --git a/deps/llhttp/include/llhttp.h b/deps/llhttp/include/llhttp.h
+index 0ef2f64712..5670da5229 100644
+--- a/deps/llhttp/include/llhttp.h
++++ b/deps/llhttp/include/llhttp.h
+@@ -4,7 +4,7 @@
+ 
+ #define LLHTTP_VERSION_MAJOR 9
+ #define LLHTTP_VERSION_MINOR 4
+-#define LLHTTP_VERSION_PATCH 1
++#define LLHTTP_VERSION_PATCH 2
+ 
+ #ifndef INCLUDE_LLHTTP_ITSELF_H_
+ #define INCLUDE_LLHTTP_ITSELF_H_
+diff --git a/deps/llhttp/src/llhttp.c b/deps/llhttp/src/llhttp.c
+index 7e21348b2b..cbbb36cd95 100644
+--- a/deps/llhttp/src/llhttp.c
++++ b/deps/llhttp/src/llhttp.c
+@@ -2471,6 +2471,10 @@ static llparse_state_t llhttp__internal__run(
+         return s_n_llhttp__internal__n_header_value_connection_ws;
+       }
+       switch (*p) {
++        case 9: {
++          p++;
++          goto s_n_llhttp__internal__n_header_value_connection_ws;
++        }
+         case 10: {
+           goto s_n_llhttp__internal__n_header_value_otherwise;
+         }
+@@ -6294,10 +6298,6 @@ static llparse_state_t llhttp__internal__run(
+           p++;
+           goto s_n_llhttp__internal__n_invoke_llhttp__on_status_complete;
+         }
+-        case 13: {
+-          p++;
+-          goto s_n_llhttp__internal__n_invoke_llhttp__on_status_complete;
+-        }
+         default: {
+           goto s_n_llhttp__internal__n_invoke_test_lenient_flags_30;
+         }

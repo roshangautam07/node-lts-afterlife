@@ -1,0 +1,248 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Roshan Gautam <roshangautam07@gmail.com>
+Date: Sun, 25 Oct 2026 22:03:14 +0545
+Subject: [PATCH 74/74] 2026-10-25, Version 18.20.9 'Hydrogen' (LTS)
+
+Unofficial security release for Node.js 18 after its upstream
+end-of-life. See doc/changelogs/CHANGELOG_V18.md.
+---
+ CHANGELOG.md                    |   3 +-
+ doc/api/deprecations.md         |   2 +-
+ doc/api/errors.md               |   2 +-
+ doc/api/http2.md                |   8 +-
+ doc/changelogs/CHANGELOG_V18.md | 127 ++++++++++++++++++++++++++++++++
+ src/node_version.h              |   2 +-
+ 6 files changed, 136 insertions(+), 8 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index be7dd523dc..03c6dcbb1a 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -32,7 +32,8 @@ release.
+ </tr>
+ <tr>
+   <td valign="top">
+-<b><a href="doc/changelogs/CHANGELOG_V18.md#18.20.8">18.20.8</a></b><br/>
++<b><a href="doc/changelogs/CHANGELOG_V18.md#18.20.9">18.20.9</a></b><br/>
++<a href="doc/changelogs/CHANGELOG_V18.md#18.20.8">18.20.8</a><br/>
+ <a href="doc/changelogs/CHANGELOG_V18.md#18.20.7">18.20.7</a><br/>
+ <a href="doc/changelogs/CHANGELOG_V18.md#18.20.6">18.20.6</a><br/>
+ <a href="doc/changelogs/CHANGELOG_V18.md#18.20.5">18.20.5</a><br/>
+diff --git a/doc/api/deprecations.md b/doc/api/deprecations.md
+index b605abeafe..78821dd1dc 100644
+--- a/doc/api/deprecations.md
++++ b/doc/api/deprecations.md
+@@ -3351,7 +3351,7 @@ release lines. Please use [`dirent.parentPath`][] instead.
+ 
+ <!-- YAML
+ changes:
+-  - version: REPLACEME
++  - version: v18.20.9
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: End-of-Life.
+ -->
+diff --git a/doc/api/errors.md b/doc/api/errors.md
+index 3a07f4a454..fc96f9e3a4 100644
+--- a/doc/api/errors.md
++++ b/doc/api/errors.md
+@@ -1729,7 +1729,7 @@ as specified through the `maxSessionInvalidFrames` option, has been exceeded.
+ ### `ERR_HTTP2_TOO_MANY_ORIGINS`
+ 
+ <!-- YAML
+-added: REPLACEME
++added: v18.20.9
+ -->
+ 
+ The number of uniq origin sent by the server has exceeded the value defined in
+diff --git a/doc/api/http2.md b/doc/api/http2.md
+index 9a58c834de..fa5070d864 100644
+--- a/doc/api/http2.md
++++ b/doc/api/http2.md
+@@ -930,7 +930,7 @@ The `'origin'` event is only emitted when using a secure TLS connection.
+ <!-- YAML
+ added: v8.4.0
+ changes:
+-  - version: REPLACEME
++  - version: v18.20.9
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: The `weight` option is now ignored, setting it will trigger a
+                  runtime warning.
+@@ -1301,9 +1301,9 @@ numeric stream identifier.
+ 
+ <!-- YAML
+ added: v8.4.0
+-deprecated: REPLACEME
++deprecated: v18.20.9
+ changes:
+-  - version: REPLACEME
++  - version: v18.20.9
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: This method no longer sets the priority of the stream. Using it
+                  now triggers a runtime warning.
+@@ -1399,7 +1399,7 @@ req.setTimeout(5000, () => req.close(NGHTTP2_CANCEL));
+ <!-- YAML
+ added: v8.4.0
+ changes:
+-  - version: REPLACEME
++  - version: v18.20.9
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: The `state.weight` property is now always set to 16 and
+                  `sumDependencyWeight` is always set to 0.
+diff --git a/doc/changelogs/CHANGELOG_V18.md b/doc/changelogs/CHANGELOG_V18.md
+index 87735a65b4..63c4473e9f 100644
+--- a/doc/changelogs/CHANGELOG_V18.md
++++ b/doc/changelogs/CHANGELOG_V18.md
+@@ -9,6 +9,7 @@
+ </tr>
+ <tr>
+ <td>
++<a href="#18.20.9">18.20.9</a><br/>
+ <a href="#18.20.8">18.20.8</a><br/>
+ <a href="#18.20.7">18.20.7</a><br/>
+ <a href="#18.20.6">18.20.6</a><br/>
+@@ -73,6 +74,132 @@
+   * [io.js](CHANGELOG_IOJS.md)
+   * [Archive](CHANGELOG_ARCHIVE.md)
+ 
++<a id="18.20.9"></a>
++
++## 2026-10-25, Version 18.20.9 'Hydrogen' (LTS), @nodejs-eol-support
++
++This is an unofficial security release made after the upstream end-of-life
++of Node.js 18. It contains backports of the fixes from the Node.js
++security releases published since then, and security-relevant dependency
++updates. It is not built or endorsed by the Node.js project.
++
++### Notable Changes
++
++* (CVE-2025-23167) deps: update llhttp to 9.4.3 (Roshan Gautam)
++* (CVE-2025-23166) src: fix error handling on async crypto operations (RafaelGSS)
++* (CVE-2025-27210) lib: handle all windows reserved driver name (RafaelGSS)
++* (CVE-2026-21637) tls: route callback exceptions through error handlers (Matteo Collina)
++* (CVE-2025-59465) lib: add TLSSocket default error handler (RafaelGSS)
++* (CVE-2025-59466) src: rethrow stack overflow exceptions in async_hooks (Matteo Collina)
++* (CVE-2025-55131) src,lib: refactor unsafe buffer creation to remove zero-fill toggle (Сковорода Никита Андреевич)
++* (CVE-2026-21710) http: use null prototype for headersDistinct/trailersDistinct (Matteo Collina)
++* (CVE-2026-21713) crypto: use timing-safe comparison in Web Cryptography HMAC (Filip Skokan)
++* (CVE-2026-21714) src: handle NGHTTP2_ERR_FLOW_CONTROL error code (RafaelGSS)
++* (CVE-2026-21637) tls: wrap SNICallback invocation in try/catch (Matteo Collina)
++* (CVE-2026-48618) tls: normalize hostname for server identity checks (Matteo Collina)
++* (CVE-2026-48619) http2: cap originSet size to prevent unbounded memory growth (Matteo Collina)
++* (CVE-2026-48928) tls: fix case-sensitive SNI context matching (Matteo Collina)
++* (CVE-2026-48930) dns,net: reject hostnames with embedded NUL bytes (Matteo Collina)
++* (CVE-2026-48934) tls: bind reusable sessions to authenticated host (Matteo Collina)
++* (CVE-2026-48931) http: fix response queue poisoning in http.Agent (Matteo Collina)
++* (CVE-2026-48933) crypto: guard WebCrypto cipher output length (Filip Skokan)
++* (CVE-2026-56846) http2: retain header memory in session accounting (Matteo Collina)
++* (CVE-2026-56848) http2: defer rst stream while in scope (Matteo Collina)
++* (CVE-2026-56850) https: distinguish PFX object-array agent keys (RafaelGSS)
++* (CVE-2026-58040) https: bind identity checks to session reuse (Matteo Collina)
++* (CVE-2026-58042) dns: handle large resolveAny address replies (RafaelGSS)
++* (CVE-2026-58044) http: reject requests exceeding max header count (Matteo Collina)
++* (CVE-2026-58045) zlib: throw on out-of-bounds write buffers (RafaelGSS)
++* (CVE-2026-105481) http: ensure agent data guard works without I/O (James M Snell)
++* (CVE-2026-105482) dns: validate resolve inputs for null bytes (James M Snell)
++* (CVE-2026-106069) tls: reject non-canonical IP addresses (Matteo Collina)
++* (CVE-2026-106074) crypto: reset random caches across snapshots (Filip Skokan)
++* (CVE-2026-111497) deps: brotli: cherry-pick 0ed4268a4401abcb44720963 (Evgenii Kliuchnikov)
++* (CVE-2026-111497) src: expose `BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH` (Antoine du Hamel)
++* deps: update nghttp2 to 1.69.0 (Roshan Gautam)
++* (CVE-2026-48937) deps: fix integration issues with the latest nghttp2 (Tim Perry)
++* tls: reject chains containing blocked public keys (Ulises Gascon)
++* deps: update undici to 6.29.1 (Roshan Gautam)
++* deps: update c-ares to 1.34.9 (Roshan Gautam)
++* deps: update OpenSSL to 3.0.22 (Roshan Gautam)
++* (CVE-2026-21717) deps,build,test: fix array index hash collision (Roshan Gautam)
++
++### Commits
++
++* \[`4037c60975`] - build: fix compilation with Apple clang 21 (Roshan Gautam)
++* \[`f2cdcb9b5f`] - deps: update llhttp to 9.4.3 (Roshan Gautam)
++* \[`856ea8ba5d`] - src: fix error handling on async crypto operations (RafaelGSS)
++* \[`1b95041d60`] - lib: handle all windows reserved driver name (RafaelGSS)
++* \[`5b90075d41`] - tls: route callback exceptions through error handlers (Matteo Collina)
++* \[`595998b14e`] - lib: add TLSSocket default error handler (RafaelGSS)
++* \[`2f686fc1cc`] - src: rethrow stack overflow exceptions in async_hooks (Matteo Collina)
++* \[`4005bf5915`] - src,lib: refactor unsafe buffer creation to remove zero-fill toggle (Сковорода Никита Андреевич)
++* \[`3a579e2a96`] - http: use null prototype for headersDistinct/trailersDistinct (Matteo Collina)
++* \[`1daa9f2463`] - crypto: use timing-safe comparison in Web Cryptography HMAC (Filip Skokan)
++* \[`fd90b827b7`] - src: handle NGHTTP2_ERR_FLOW_CONTROL error code (RafaelGSS)
++* \[`257b10b061`] - tls: wrap SNICallback invocation in try/catch (Matteo Collina)
++* \[`2543d1f72f`] - tls: normalize hostname for server identity checks (Matteo Collina)
++* \[`8b5391b1e8`] - http2: cap originSet size to prevent unbounded memory growth (Matteo Collina)
++* \[`2bcdfefc47`] - tls: fix case-sensitive SNI context matching (Matteo Collina)
++* \[`4175df3698`] - dns,net: reject hostnames with embedded NUL bytes (Matteo Collina)
++* \[`43a7a44aa0`] - tls: bind reusable sessions to authenticated host (Matteo Collina)
++* \[`4abd94c35a`] - test: add session reuse host verification regressions (Matteo Collina)
++* \[`12bc99033a`] - http: fix response queue poisoning in http.Agent (Matteo Collina)
++* \[`4ba0e64e16`] - crypto: guard WebCrypto cipher output length (Filip Skokan)
++* \[`4012fedb0c`] - http2: retain header memory in session accounting (Matteo Collina)
++* \[`130e4f2163`] - http2: defer rst stream while in scope (Matteo Collina)
++* \[`37a0147ac8`] - https: distinguish PFX object-array agent keys (RafaelGSS)
++* \[`43cd29f85d`] - https: bind identity checks to session reuse (Matteo Collina)
++* \[`db6723bc3a`] - dns: handle large resolveAny address replies (RafaelGSS)
++* \[`1f37d32aa1`] - http: reject requests exceeding max header count (Matteo Collina)
++* \[`bd17d3493d`] - zlib: throw on out-of-bounds write buffers (RafaelGSS)
++* \[`2c3de93f85`] - http: avoid stream listeners on idle agent sockets (Matteo Collina)
++* \[`af0940c479`] - http: ensure agent data guard works without I/O (James M Snell)
++* \[`679911d47e`] - dns: validate resolve inputs for null bytes (James M Snell)
++* \[`6a9ee1fd5b`] - tls: match IPv6 hosts against IP-Address SANs (Pascal Garber)
++* \[`0a7acb4a0f`] - tls: reject non-canonical IP addresses (Matteo Collina)
++* \[`c52a6c541e`] - crypto: reset random caches across snapshots (Filip Skokan)
++* \[`b3de3257f4`] - deps: brotli: cherry-pick 0ed4268a4401abcb44720963 (Evgenii Kliuchnikov)
++* \[`124ba7b4fc`] - src: expose `BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH` (Antoine du Hamel)
++* \[`6ffd64768c`] - http2: remove support for priority signaling (Matteo Collina)
++* \[`8f03adedb2`] - http2: fix DEP0194 message (KaKa)
++* \[`42a3e3e786`] - deps: update nghttp2 to 1.69.0 (Roshan Gautam)
++* \[`5e6a3042e5`] - deps: fix integration issues with the latest nghttp2 (Tim Perry)
++* \[`fb0a932a41`] - http2: avoid uaf while receiving and sending rst_stream (esgor)
++* \[`4508aa962d`] - tls: reject chains containing blocked public keys (Ulises Gascon)
++* \[`473cc1f07d`] - crypto: update root certificates to NSS 3.114 (Node.js GitHub Bot)
++* \[`75ce987569`] - crypto: update root certificates to NSS 3.117 (Node.js GitHub Bot)
++* \[`913b794fb5`] - crypto: update root certificates to NSS 3.119 (Node.js GitHub Bot)
++* \[`f1147c7562`] - crypto: update root certificates to NSS 3.121 (Node.js GitHub Bot)
++* \[`9d18b9cffe`] - crypto: update root certificates to NSS 3.123.1 (Node.js GitHub Bot)
++* \[`a7174896eb`] - crypto: update root certificates to NSS 3.125 (Node.js GitHub Bot)
++* \[`b8ea3f5cd1`] - crypto: update root certificates to NSS 3.129 (Node.js GitHub Bot)
++* \[`eb111dd9b6`] - crypto: update root certificates to NSS 3.131.1 (Antoine du Hamel)
++* \[`aade403304`] - tools: sync mk-ca-bundle.pl with curl (Archkon)
++* \[`451c6aee0f`] - deps: update undici to 6.29.1 (Roshan Gautam)
++* \[`541731eaad`] - zlib: fix use-after-free when reset() is called during write (Matteo Collina)
++* \[`e98d443d29`] - src: clamp WriteUtf8 capacity to INT_MAX in EncodeInto (semimikoh)
++* \[`deb41eeb2d`] - url: handle unparsable serialized URLs in setters (Matteo Collina)
++* \[`3b0d22612a`] - http: fix keep-alive socket reuse race in requestOnFinish (Martin Slota)
++* \[`3608f4297d`] - http2: fix FileHandle leak in respondWithFile (sangwook)
++* \[`f09c051ecb`] - deps: update c-ares to 1.34.9 (Roshan Gautam)
++* \[`a6a8ec7b7e`] - deps: update OpenSSL to 3.0.22 (Roshan Gautam)
++* \[`75cd199e73`] - test: account for varied OpenSSL CCM final behaviours (Filip Skokan)
++* \[`2dbb4e24b8`] - test: deflake test-dns (Luigi Pinca)
++* \[`7351b3f121`] - dns: fix dns query cache implementation (Ethan Arrowood)
++* \[`c8715589ef`] - dns: stop using deprecated `ares_query` (Aviv Keller)
++* \[`f071206d7c`] - src: fix dns crash when failed to create NodeAresTask (theanarkh)
++* \[`9394a9a217`] - dns: restore dns query cache ttl (Ethan Arrowood)
++* \[`f864bb2f31`] - dns: fix parse memory leaky (theanarkh)
++* \[`c659beda6b`] - dns: fix Windows SRV ECONNREFUSED by adjusting c-ares fallback detection (notvivek12)
++* \[`c40e343b38`] - deps,build,test: fix array index hash collision (Roshan Gautam)
++* \[`f130b4c004`] - module: fix require.resolve() crash on non-string paths (Aditi)
++* \[`28cd504187`] - http2: fix check for `frame->hd.type` (hanguanqiang)
++* \[`495841cac7`] - src: fix possible dereference of null pointer (Eusgor)
++* \[`bfa5fc5e60`] - os: fix GetInterfaceAddresses memory lieaky (theanarkh)
++* \[`9d5e0050e6`] - http2: do not crash on mismatched ping buffer length (René)
++* \[`2a53aecacc`] - http2: validate initialWindowSize per HTTP/2 spec (Matteo Collina)
++
+ <a id="18.20.8"></a>
+ 
+ ## 2025-03-27, Version 18.20.8 'Hydrogen' (LTS), @richardlau
+diff --git a/src/node_version.h b/src/node_version.h
+index 6ab77a82e3..c8b9735027 100644
+--- a/src/node_version.h
++++ b/src/node_version.h
+@@ -24,7 +24,7 @@
+ 
+ #define NODE_MAJOR_VERSION 18
+ #define NODE_MINOR_VERSION 20
+-#define NODE_PATCH_VERSION 8
++#define NODE_PATCH_VERSION 9
+ 
+ #define NODE_VERSION_IS_LTS 1
+ #define NODE_VERSION_LTS_CODENAME "Hydrogen"

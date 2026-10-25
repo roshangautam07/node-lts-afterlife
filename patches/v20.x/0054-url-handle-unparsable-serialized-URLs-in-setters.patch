@@ -1,0 +1,75 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Wed, 5 Aug 2026 11:19:53 +0100
+Subject: [PATCH 54/60] url: handle unparsable serialized URLs in setters
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Matteo Collina <hello@matteocollina.com>
+PR-URL: https://github.com/nodejs/node/pull/64651
+Reviewed-By: James M Snell <jasnell@gmail.com>
+Reviewed-By: Yagiz Nizipli <yagiz@nizipli.com>
+Reviewed-By: Filip Skokan <panva.ip@gmail.com>
+Signed-off-by: Juan José Arboleda <soyjuanarbol@gmail.com>
+(cherry picked from commit 5fbbad6e82e095a3d6d8767c21dd53e72340734d)
+---
+ src/node_url.cc                               |  6 ++++-
+ .../test-whatwg-url-custom-setters.js         | 26 +++++++++++++++++++
+ 2 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/src/node_url.cc b/src/node_url.cc
+index 5eefb4a251..945c692d78 100644
+--- a/src/node_url.cc
++++ b/src/node_url.cc
+@@ -314,8 +314,12 @@ void BindingData::Update(const FunctionCallbackInfo<Value>& args) {
+   Utf8Value new_value(isolate, args[2].As<String>());
+ 
+   std::string_view new_value_view = new_value.ToStringView();
++  // A serialized URL is not always reparsable: the IDNA encoder can emit a
++  // host label that the decoder rejects. Fail the update instead of crashing.
+   auto out = ada::parse<ada::url_aggregator>(input.ToStringView());
+-  CHECK(out);
++  if (!out) {
++    return args.GetReturnValue().Set(false);
++  }
+ 
+   bool result{true};
+ 
+diff --git a/test/parallel/test-whatwg-url-custom-setters.js b/test/parallel/test-whatwg-url-custom-setters.js
+index b98bf5d8d3..061ccf6f44 100644
+--- a/test/parallel/test-whatwg-url-custom-setters.js
++++ b/test/parallel/test-whatwg-url-custom-setters.js
+@@ -39,6 +39,32 @@ const additionalTestCases =
+   }
+ }
+ 
++// The parser can produce a serialization it rejects when parsing it back: a
++// Unicode host encodes to an `xn--xn--` label that the punycode decoder turns
++// down. Setters reparse `href`, so the failure must not take the process down.
++// Implementations backed by ICU accept that label, and ada does too as of
++// https://github.com/ada-url/idna/pull/72, so this URL round-trips once that
++// lands here and the setters below apply as usual.
++test(function() {
++  const url = new URL('http:\u{1F600}xn-');
++  const setters = {
++    hostname: 'example.com',
++    host: 'example.com:8080',
++    protocol: 'https:',
++    pathname: '/path',
++    search: '?search',
++    hash: '#hash',
++    port: '8080',
++    username: 'username',
++    password: 'password',
++  };
++
++  for (const [property, value] of Object.entries(setters)) {
++    url[property] = value;
++    assert_equals(typeof url.href, 'string', `Setting ${property} does not crash`);
++  }
++}, 'URL: setting properties with an unparsable serialized URL');
++
+ {
+   const url = new URL('http://example.com/');
+   const obj = {

@@ -1,0 +1,169 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Sun, 29 Mar 2026 17:42:54 +0200
+Subject: [PATCH 09/60] http: fix response queue poisoning in http.Agent
+
+Attach a data guard listener on idle keepAlive sockets in the
+freeSockets pool. If unsolicited data arrives while the socket
+is idle, destroy it immediately to prevent response queue poisoning.
+
+Refs: https://hackerone.com/reports/3582376
+PR-URL: https://github.com/nodejs-private/node-private/pull/846
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+CVE-ID: CVE-2026-48931
+(cherry picked from commit 0a22d40180cb796e0d68e94c1a7a8a05a8f47c10)
+---
+ lib/_http_agent.js                            | 13 +++
+ .../test-http-agent-free-socket-data-guard.js | 90 +++++++++++++++++++
+ test/parallel/test-http-agent-keepalive.js    |  3 +-
+ 3 files changed, 105 insertions(+), 1 deletion(-)
+ create mode 100644 test/parallel/test-http-agent-free-socket-data-guard.js
+
+diff --git a/lib/_http_agent.js b/lib/_http_agent.js
+index 17f5d100c8..4c1aa622de 100644
+--- a/lib/_http_agent.js
++++ b/lib/_http_agent.js
+@@ -78,6 +78,16 @@ function freeSocketErrorListener(err) {
+   socket.emit('agentRemove');
+ }
+ 
++// Guard against unsolicited data arriving while a socket is idle in the
++// freeSockets pool.  When the HTTPParser is detached the data would sit
++// in the TCP buffer and be silently consumed as the response for the
++// *next* request that reuses the socket (response-queue poisoning).
++// See: https://hackerone.com/reports/3582376
++function freeSocketDataGuard() {
++  debug('DATA on FREE socket - destroying poisoned socket');
++  this.destroy();
++}
++
+ function Agent(options) {
+   if (!(this instanceof Agent))
+     return new Agent(options);
+@@ -175,6 +185,8 @@ function Agent(options) {
+     this.removeSocket(socket, options);
+ 
+     socket.once('error', freeSocketErrorListener);
++    socket.on('data', freeSocketDataGuard);
++    socket.resume();
+     freeSockets.push(socket);
+   });
+ 
+@@ -510,6 +522,7 @@ Agent.prototype.keepSocketAlive = function keepSocketAlive(socket) {
+ Agent.prototype.reuseSocket = function reuseSocket(socket, req) {
+   debug('have free socket');
+   socket.removeListener('error', freeSocketErrorListener);
++  socket.removeListener('data', freeSocketDataGuard);
+   req.reusedSocket = true;
+   socket.ref();
+ };
+diff --git a/test/parallel/test-http-agent-free-socket-data-guard.js b/test/parallel/test-http-agent-free-socket-data-guard.js
+new file mode 100644
+index 0000000000..9c1a526aae
+--- /dev/null
++++ b/test/parallel/test-http-agent-free-socket-data-guard.js
+@@ -0,0 +1,90 @@
++'use strict';
++
++// Regression test for HackerOne report #3582376
++// HTTP Response Queue Poisoning via TOCTOU Race Condition in http.Agent
++//
++// When keepAlive is true, there is a window between a socket entering the
++// freeSockets pool (parser detached) and being reassigned. If the server
++// writes a full HTTP response during this window, it is consumed as the
++// response for the *next* request — poisoning the response queue.
++//
++// The fix attaches a data guard listener + resume() on idle sockets so
++// that unsolicited data causes the socket to be destroyed.
++
++const common = require('../common');
++const assert = require('assert');
++const http = require('http');
++
++let serverSocket;
++
++const server = http.createServer(common.mustCall((req, res) => {
++  // Capture the raw socket on the first request
++  serverSocket ||= req.socket;
++  res.end(req.url);
++}, 2));  // Expect request1 and request2
++
++server.listen(0, common.mustCall(() => {
++  const agent = new http.Agent({ keepAlive: true });
++  const options = { host: '127.0.0.1', port: server.address().port, agent };
++  const name = agent.getName(options);
++
++  // Step 1: Send request1
++  const request1 = http.request({ ...options, path: '/request1' });
++  request1.end();
++
++  request1.on('response', common.mustCall((response) => {
++    let body = '';
++    response.setEncoding('utf8');
++    response.on('data', (data) => { body += data; });
++    response.on('end', common.mustCall(() => {
++      assert.strictEqual(body, '/request1');
++    }));
++  }));
++
++  request1.on('close', common.mustCall(() => {
++    // Use nextTick to ensure socket is in freeSockets
++    process.nextTick(common.mustCall(() => {
++      // Verify the socket is in the free pool with parser detached
++      assert.strictEqual(agent.freeSockets[name]?.length, 1);
++      const freeSocket = agent.freeSockets[name][0];
++      assert.strictEqual(freeSocket.parser, null);
++      // With the fix, a data guard listener is attached
++      assert.strictEqual(freeSocket.listenerCount('data'), 1);
++
++      // Step 2: Server injects a poisoned response while socket is idle
++      serverSocket.write(
++        'HTTP/1.1 200 OK\r\n' +
++        'X-Poisoned: true\r\n' +
++        'Connection: keep-alive\r\n' +
++        'Content-Length: 0\r\n' +
++        '\r\n'
++      );
++
++      // Step 3: Allow the event loop to poll I/O so the guard can fire.
++      // In a real attack, there is always time between the poison arriving
++      // and the next client request. setTimeout(0) runs after the I/O poll
++      // phase, giving the guard a chance to receive the poisoned data.
++      setTimeout(common.mustCall(() => {
++        // The guard should have destroyed the poisoned socket
++        assert.strictEqual(freeSocket.destroyed, true);
++        assert.strictEqual(agent.freeSockets[name], undefined);
++
++        // Step 4: Send request2 — should get a fresh connection
++        const request2 = http.request({ ...options, path: '/request2' });
++        request2.end();
++
++        request2.on('response', common.mustCall((response) => {
++          let body = '';
++          response.setEncoding('utf8');
++          response.on('data', (data) => { body += data; });
++          response.on('end', common.mustCall(() => {
++            assert.strictEqual(response.headers['x-poisoned'], undefined);
++            assert.strictEqual(body, '/request2');
++            agent.destroy();
++            server.close();
++          }));
++        }));
++      }), 50);
++    }));
++  }));
++}));
+diff --git a/test/parallel/test-http-agent-keepalive.js b/test/parallel/test-http-agent-keepalive.js
+index f7424634df..e4f5c09de2 100644
+--- a/test/parallel/test-http-agent-keepalive.js
++++ b/test/parallel/test-http-agent-keepalive.js
+@@ -149,7 +149,8 @@ server.listen(0, common.mustCall(() => {
+ function checkListeners(socket) {
+   const callback = common.mustCall(() => {
+     if (!socket.destroyed) {
+-      assert.strictEqual(socket.listenerCount('data'), 0);
++      // Sockets have freeSocketDataGuard while in the free pool.
++      assert.strictEqual(socket.listenerCount('data'), 1);
+       assert.strictEqual(socket.listenerCount('drain'), 0);
+       // Sockets have freeSocketErrorListener.
+       assert.strictEqual(socket.listenerCount('error'), 1);

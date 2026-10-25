@@ -1,0 +1,3353 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: "Node.js GitHub Bot" <github-bot@iojs.org>
+Date: Wed, 8 Jul 2026 14:54:47 -0400
+Subject: [PATCH 38/60] deps: update c-ares to 1.34.8
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+PR-URL: https://github.com/nodejs/node/pull/64330
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+Reviewed-By: Richard Lau <richard.lau@ibm.com>
+Signed-off-by: Juan José Arboleda <soyjuanarbol@gmail.com>
+(cherry picked from commit 7d82841b4eb808a05fb2ef9ed6c0faca22b4763a)
+---
+ deps/cares/CMakeLists.txt                     |  29 +-
+ deps/cares/README.md                          |   4 +-
+ deps/cares/RELEASE-NOTES.md                   | 110 ++++++
+ deps/cares/aminclude_static.am                |   2 +-
+ deps/cares/configure                          |  22 +-
+ deps/cares/configure.ac                       |   4 +-
+ deps/cares/docs/ares_dns_record.3             |   2 +-
+ deps/cares/docs/ares_getaddrinfo.3            |  23 ++
+ deps/cares/docs/ares_gethostbyaddr.3          |  11 +-
+ deps/cares/docs/ares_gethostbyname.3          |  11 +-
+ deps/cares/docs/ares_getnameinfo.3            |  26 +-
+ deps/cares/docs/ares_query.3                  |  10 +
+ deps/cares/docs/ares_search.3                 |   9 +
+ deps/cares/docs/ares_send.3                   |  10 +
+ deps/cares/include/ares.h                     |   8 +
+ deps/cares/include/ares_dns_record.h          |   5 +-
+ deps/cares/include/ares_version.h             |   4 +-
+ deps/cares/src/lib/CMakeLists.txt             |   4 +
+ deps/cares/src/lib/Makefile.in                |   2 +-
+ deps/cares/src/lib/ares_addrinfo_localhost.c  |  40 +--
+ deps/cares/src/lib/ares_close_sockets.c       |   8 +-
+ deps/cares/src/lib/ares_conn.h                |   8 +-
+ deps/cares/src/lib/ares_cookie.c              |   4 +-
+ deps/cares/src/lib/ares_getaddrinfo.c         |  85 ++++-
+ deps/cares/src/lib/ares_gethostbyname.c       |   4 +
+ deps/cares/src/lib/ares_hosts_file.c          |   3 +
+ deps/cares/src/lib/ares_init.c                |  14 +
+ deps/cares/src/lib/ares_library_init.c        |  21 ++
+ deps/cares/src/lib/ares_private.h             |  17 +-
+ deps/cares/src/lib/ares_process.c             | 329 +++++++++++++-----
+ deps/cares/src/lib/ares_qcache.c              |   8 +-
+ deps/cares/src/lib/ares_socket.c              |   2 +
+ deps/cares/src/lib/ares_sysconfig.c           |   9 +-
+ deps/cares/src/lib/ares_sysconfig_files.c     |  26 +-
+ deps/cares/src/lib/ares_sysconfig_win.c       | 167 +++++----
+ deps/cares/src/lib/ares_timeout.c             |  11 +
+ deps/cares/src/lib/ares_update_servers.c      |  22 +-
+ deps/cares/src/lib/dsa/ares_array.c           |  25 +-
+ deps/cares/src/lib/dsa/ares_htable.c          |   6 +-
+ deps/cares/src/lib/dsa/ares_htable_dict.c     |   2 +
+ deps/cares/src/lib/dsa/ares_llist.c           |   5 +-
+ .../src/lib/event/ares_event_configchg.c      |   6 +-
+ .../src/lib/event/ares_event_wake_pipe.c      |   8 +-
+ deps/cares/src/lib/event/ares_event_win32.c   |   3 +
+ deps/cares/src/lib/include/ares_mem.h         |   3 +
+ deps/cares/src/lib/include/ares_str.h         |  17 +
+ deps/cares/src/lib/legacy/ares_expand_name.c  |   2 +-
+ .../src/lib/legacy/ares_parse_ns_reply.c      |   4 +-
+ .../src/lib/legacy/ares_parse_ptr_reply.c     |   4 +-
+ deps/cares/src/lib/record/ares_dns_mapping.c  |   8 +-
+ .../src/lib/record/ares_dns_multistring.c     |   4 +-
+ deps/cares/src/lib/record/ares_dns_name.c     |  71 +++-
+ deps/cares/src/lib/record/ares_dns_parse.c    |  99 ++++--
+ deps/cares/src/lib/record/ares_dns_record.c   |  54 ++-
+ deps/cares/src/lib/str/ares_buf.c             |  44 ++-
+ deps/cares/src/lib/str/ares_str.c             |  54 +++
+ deps/cares/src/lib/util/ares_iface_ips.c      |  32 +-
+ deps/cares/src/lib/util/ares_iface_ips.h      |   1 +
+ deps/cares/src/lib/util/ares_math.c           |  13 +-
+ deps/cares/src/lib/util/ares_math.h           |   5 +
+ deps/cares/src/lib/util/ares_threads.c        |   3 +-
+ deps/cares/src/lib/util/ares_time.h           |   1 +
+ deps/cares/src/lib/util/ares_uri.c            |   5 +-
+ deps/cares/src/tools/adig.c                   |  12 +-
+ deps/cares/src/tools/ahost.c                  |   7 +
+ 65 files changed, 1213 insertions(+), 359 deletions(-)
+
+diff --git a/deps/cares/CMakeLists.txt b/deps/cares/CMakeLists.txt
+index a2a9c19329..a9ae8fb952 100644
+--- a/deps/cares/CMakeLists.txt
++++ b/deps/cares/CMakeLists.txt
+@@ -12,7 +12,7 @@ INCLUDE (CheckCSourceCompiles)
+ INCLUDE (CheckStructHasMember)
+ INCLUDE (CheckLibraryExists)
+ 
+-PROJECT (c-ares LANGUAGES C VERSION "1.34.6" )
++PROJECT (c-ares LANGUAGES C VERSION "1.34.8" )
+ 
+ # Set this version before release
+ SET (CARES_VERSION "${PROJECT_VERSION}")
+@@ -30,7 +30,7 @@ INCLUDE (GNUInstallDirs) # include this *AFTER* PROJECT(), otherwise paths are w
+ # For example, a version of 4:0:2 would generate output such as:
+ #    libname.so   -> libname.so.2
+ #    libname.so.2 -> libname.so.2.2.0
+-SET (CARES_LIB_VERSIONINFO "21:5:19")
++SET (CARES_LIB_VERSIONINFO "21:7:19")
+ 
+ 
+ OPTION (CARES_STATIC        "Build as a static library"                                             OFF)
+@@ -43,6 +43,7 @@ OPTION (CARES_BUILD_TOOLS   "Build tools"
+ OPTION (CARES_SYMBOL_HIDING "Hide private symbols in shared libraries"                              OFF)
+ OPTION (CARES_THREADS       "Build with thread-safety support"                                      ON)
+ OPTION (CARES_COVERAGE      "Build for code coverage"                                               OFF)
++OPTION (CARES_WERROR        "Treat compiler warnings on the c-ares library as errors"               OFF)
+ SET    (CARES_RANDOM_FILE "/dev/urandom" CACHE STRING "Suitable File / Device Path for entropy, such as /dev/urandom")
+ 
+ # Tests require static to be enabled on Windows to be able to access otherwise hidden symbols
+@@ -54,6 +55,30 @@ ENDIF ()
+ 
+ INCLUDE (EnableWarnings)
+ 
++# Optionally treat warnings as errors for the c-ares library itself.  This is
++# applied per-target (see cares_set_werror() usage) rather than globally so it
++# does not affect the test/fuzz harnesses (which carry their own warnings) or
++# CMake's own compiler feature checks.  Enabled in CI only on toolchains known
++# to be free of spurious warnings at our high warning levels.
++FUNCTION (cares_set_werror target)
++	IF (NOT CARES_WERROR)
++		RETURN ()
++	ENDIF ()
++	IF (MSVC)
++		TARGET_COMPILE_OPTIONS (${target} PRIVATE /WX)
++	ELSE ()
++		TARGET_COMPILE_OPTIONS (${target} PRIVATE -Werror)
++		# Modern libc headers (e.g. glibc <string.h>) use the C11 _Generic
++		# keyword for const-correctness of strchr()/memchr()/etc.  Clang flags
++		# that as a C11 extension under our C90 + -Wpedantic build even though it
++		# originates in a system header at our call sites.  It is not something
++		# we can fix in our own code, so warn but do not fail on it.
++		IF (CMAKE_C_COMPILER_ID MATCHES "Clang")
++			TARGET_COMPILE_OPTIONS (${target} PRIVATE -Wno-error=c11-extensions)
++		ENDIF ()
++	ENDIF ()
++ENDFUNCTION ()
++
+ IF (MSVC)
+ 	# allow linking against the static runtime library in msvc
+ 	OPTION (CARES_MSVC_STATIC_RUNTIME "Link against the static runtime library" OFF)
+diff --git a/deps/cares/README.md b/deps/cares/README.md
+index 6566c9fe6a..7e818df8fa 100644
+--- a/deps/cares/README.md
++++ b/deps/cares/README.md
+@@ -1,7 +1,7 @@
+ # [![c-ares logo](https://c-ares.org/art/c-ares-logo.svg)](https://c-ares.org/)
+ 
+-[![Build Status](https://api.cirrus-ci.com/github/c-ares/c-ares.svg?branch=main)](https://cirrus-ci.com/github/c-ares/c-ares)
+-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/aevgc5914tm72pvs/branch/main?svg=true)](https://ci.appveyor.com/project/c-ares/c-ares/branch/main)
++[![Build Status](https://github.com/c-ares/c-ares/actions/workflows/ubuntu-latest.yml/badge.svg?branch=main)](https://github.com/c-ares/c-ares/actions/workflows/ubuntu-latest.yml)
++[![Windows Build Status](https://github.com/c-ares/c-ares/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/c-ares/c-ares/actions/workflows/windows.yml)
+ [![Coverage Status](https://coveralls.io/repos/github/c-ares/c-ares/badge.svg?branch=main)](https://coveralls.io/github/c-ares/c-ares?branch=main)
+ [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/291/badge)](https://bestpractices.coreinfrastructure.org/projects/291)
+ [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/c-ares.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:c-ares)
+diff --git a/deps/cares/RELEASE-NOTES.md b/deps/cares/RELEASE-NOTES.md
+index ded75001b5..93cc10fc74 100644
+--- a/deps/cares/RELEASE-NOTES.md
++++ b/deps/cares/RELEASE-NOTES.md
+@@ -1,3 +1,113 @@
++## c-ares version 1.34.8 - July 7 2026
++
++This is a bugfix release.
++
++Bugfixes:
++* Revert "Mark parameters in callbacks as const" which shipped in 1.34.7.
++  Changing the parameter types of the `ares_callback`, `ares_host_callback`,
++  and `ares_nameinfo_callback` function pointer typedefs was an unintended
++  API break: existing applications with the historical non-const callback
++  signatures no longer compiled, particularly in C++ where function pointer
++  types must match exactly. The read-only nature of the callback parameters
++  is now documented instead.
++  [PR #1244](https://github.com/c-ares/c-ares/pull/1244)
++
++Thanks go to these friendly people for their efforts and contributions for this
++release:
++
++* Brad House (@bradh352)
++
++
++## c-ares version 1.34.7 - July 6 2026
++
++This is a security release.
++
++Security:
++* CVE-2026-33630. Use-after-free / double-free in c-ares' query-completion
++  handling, remotely triggerable via ares_getaddrinfo() over TCP. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-6wfj-rwm7-3542
++* CPU-exhaustion denial of service via unbounded DNS name compression pointer
++  chains. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-pjmc-gx33-gc76
++* Memory-amplification denial of service via unvalidated DNS header record
++  counts. Please see
++  https://github.com/c-ares/c-ares/security/advisories/GHSA-jv8r-gqr9-68wj
++
++Changes:
++* `ares_getaddrinfo()`: handle a NULL node per POSIX and implement
++  `ARES_AI_PASSIVE`. [PR #1186](https://github.com/c-ares/c-ares/pull/1186)
++* Mark parameters in callbacks as const.
++  [PR #1060](https://github.com/c-ares/c-ares/pull/1060)
++* Correct `ARES_CLASS_HESOID` misspelling to `ARES_CLASS_HESIOD`.
++  [PR #1092](https://github.com/c-ares/c-ares/pull/1092)
++
++Bugfixes:
++* Fix sticky server recovery when all servers have failures. [PR #1192](https://github.com/c-ares/c-ares/pull/1192)
++* Fix UDP socket exhaustion regression: retire connections per-connection, not via server failure count. [PR #1197](https://github.com/c-ares/c-ares/pull/1197)
++* Guard DNS record binary length overflow. [PR #1168](https://github.com/c-ares/c-ares/pull/1168)
++* Prevent integer overflow in allocation size calculations. [PR #1147](https://github.com/c-ares/c-ares/pull/1147)
++* Prevent overflow in ares_array allocation size calculations. [PR #1117](https://github.com/c-ares/c-ares/pull/1117)
++* Prevent integer overflow in buffer size calculation. [PR #1116](https://github.com/c-ares/c-ares/pull/1116)
++* Add overflow checks to ares_buf_ensure_space(). [PR #1094](https://github.com/c-ares/c-ares/pull/1094)
++* Skip name compression offsets beyond the 14-bit pointer limit. [PR #1159](https://github.com/c-ares/c-ares/pull/1159)
++* ares_dns_parse: reject name compression in RDATA where not permitted (RFC 3597). [PR #1190](https://github.com/c-ares/c-ares/pull/1190)
++* ares_dns_parse: reject responses with more than one OPT record (RFC 6891). [PR #1189](https://github.com/c-ares/c-ares/pull/1189)
++* Discard oversized UDP datagrams instead of truncating the length frame. [PR #1161](https://github.com/c-ares/c-ares/pull/1161)
++* Route numeric config parsing through range-checked ares_str_parse_uint. [PR #1158](https://github.com/c-ares/c-ares/pull/1158)
++* Replace atoi-based port parsing with validated helper. [PR #1097](https://github.com/c-ares/c-ares/pull/1097)
++* Defer TCP connection error handling until DNS responses are parsed. [PR #1138](https://github.com/c-ares/c-ares/pull/1138)
++* Prevent undefined-behavior left shift in ares_calc_query_timeout(). [PR #1151](https://github.com/c-ares/c-ares/pull/1151)
++* Use unsigned type for ares_round_up_pow2_u64 to avoid undefined behavior. [PR #1107](https://github.com/c-ares/c-ares/pull/1107)
++* Fix undefined behavior in ares_buf_replace() pointer arithmetic. [PR #1099](https://github.com/c-ares/c-ares/pull/1099)
++* ares_array: reset offset when array becomes empty. [PR #1165](https://github.com/c-ares/c-ares/pull/1165)
++* ares_iface_ips: add ARES_IFACE_IP_NONE zero enum value. [PR #1187](https://github.com/c-ares/c-ares/pull/1187)
++* ares_sysconfig_files: recognize AIX netsvc.conf bind4/local4 tokens. [PR #1188](https://github.com/c-ares/c-ares/pull/1188)
++* Use safe string construction in Windows sysconfig join path. [PR #1143](https://github.com/c-ares/c-ares/pull/1143)
++* Fix zero-length RAW_RR losing type metadata during parsing. [PR #1129](https://github.com/c-ares/c-ares/pull/1129)
++* Fix RAW_RR type tostr/fromstr roundtrip mismatch. [PR #1123](https://github.com/c-ares/c-ares/pull/1123)
++* Fix NULL dereference for ifa netmask. [PR #1120](https://github.com/c-ares/c-ares/pull/1120)
++* adig: fix negated option prefix parsing. [PR #1135](https://github.com/c-ares/c-ares/pull/1135)
++* Use UnregisterWaitEx to prevent use-after-free on Win32. [PR #1111](https://github.com/c-ares/c-ares/pull/1111)
++* Add NULL check after ares_malloc_zero in Windows UTF8 conversion. [PR #1121](https://github.com/c-ares/c-ares/pull/1121)
++* Fix NULL dereference after ares_malloc_zero in Win32 IOCP event add. [PR #1132](https://github.com/c-ares/c-ares/pull/1132)
++* Fix microsecond overflow in ares_queue_wait_empty timeout. [PR #1122](https://github.com/c-ares/c-ares/pull/1122)
++* Fix NULL dereference in ares_buf_replace() on NULL buf. [PR #1124](https://github.com/c-ares/c-ares/pull/1124)
++* Initialize *read_bytes in ares_socket_recvfrom(). [PR #1125](https://github.com/c-ares/c-ares/pull/1125)
++* Fix memory leak of binbuf in ares_buf_parse_dns_binstr_int. [PR #1126](https://github.com/c-ares/c-ares/pull/1126)
++* Fix memory leak of qcache entry on key allocation failure. [PR #1127](https://github.com/c-ares/c-ares/pull/1127)
++* Fix memory leak of buf in ares_dns_multistring_combined() on OOM. [PR #1110](https://github.com/c-ares/c-ares/pull/1110)
++* Fix memory leaks on error paths in two functions. [PR #1109](https://github.com/c-ares/c-ares/pull/1109)
++* Fix memory leak of buckets in ares_htable_dict_keys() error path. [PR #1108](https://github.com/c-ares/c-ares/pull/1108)
++* Fix memory leak of bucket->key in ares_htable_dict_insert error path. [PR #1105](https://github.com/c-ares/c-ares/pull/1105)
++* Fix additional memory leaks. [PR #1091](https://github.com/c-ares/c-ares/pull/1091) [PR #1078](https://github.com/c-ares/c-ares/pull/1078)
++* Prevent corrupt addrinfo nodes on sockaddr allocation failure. [PR #1112](https://github.com/c-ares/c-ares/pull/1112)
++* Fix two logic bugs in DNS cookie handling. [PR #1103](https://github.com/c-ares/c-ares/pull/1103)
++* Fix linked list INSERT_BEFORE corruption and array insertdata_first ordering. [PR #1101](https://github.com/c-ares/c-ares/pull/1101)
++* Fix HASH_IDX macro missing parentheses. [PR #1128](https://github.com/c-ares/c-ares/pull/1128)
++* Fix malloc(0) in ares_htable_all_buckets on empty table. [PR #1131](https://github.com/c-ares/c-ares/pull/1131)
++* Fix wrong sizeof in QNX confstr() call truncating domain names. [PR #1130](https://github.com/c-ares/c-ares/pull/1130)
++* Clear probe pending flag after timeout. [PR #1059](https://github.com/c-ares/c-ares/pull/1059)
++* Fix incorrect check for empty wide string. [PR #1064](https://github.com/c-ares/c-ares/pull/1064)
++* Handle strdup failure. [PR #1077](https://github.com/c-ares/c-ares/pull/1077)
++* doc: reference ares_free_string(), not ares_free(). [PR #1084](https://github.com/c-ares/c-ares/pull/1084)
++
++Thanks go to these friendly people for their efforts and contributions for this
++release:
++
++* (@Alb3e3)
++* Brad House (@bradh352)
++* (@dankmeme01)
++* David Hotham (@dimbleby)
++* Tom Flynn (@Flynnzaa)
++* (@jmestwa-coder)
++* (@kodareef5)
++* Kaixuan Li (@MarkLee131)
++* (@lifenjoiner)
++* (@metsw24-max)
++* Song Li (@SongTonyLi)
++* (@uwezkhan)
++
++
+ ## c-ares version 1.34.6 - December 8 2025
+ 
+ This is a security release.
+diff --git a/deps/cares/aminclude_static.am b/deps/cares/aminclude_static.am
+index 07239563e6..9a00ba7891 100644
+--- a/deps/cares/aminclude_static.am
++++ b/deps/cares/aminclude_static.am
+@@ -1,6 +1,6 @@
+ 
+ # aminclude_static.am generated automatically by Autoconf
+-# from AX_AM_MACROS_STATIC on Mon Dec  8 16:21:41 UTC 2025
++# from AX_AM_MACROS_STATIC on Tue Jul  7 16:14:13 UTC 2026
+ 
+ 
+ # Code coverage
+diff --git a/deps/cares/configure b/deps/cares/configure
+index f91e2c9568..c2318a1c3b 100755
+--- a/deps/cares/configure
++++ b/deps/cares/configure
+@@ -1,6 +1,6 @@
+ #! /bin/sh
+ # Guess values for system-dependent variables and create Makefiles.
+-# Generated by GNU Autoconf 2.71 for c-ares 1.34.6.
++# Generated by GNU Autoconf 2.71 for c-ares 1.34.8.
+ #
+ # Report bugs to <c-ares mailing list: http://lists.haxx.se/listinfo/c-ares>.
+ #
+@@ -621,8 +621,8 @@ MAKEFLAGS=
+ # Identity of this package.
+ PACKAGE_NAME='c-ares'
+ PACKAGE_TARNAME='c-ares'
+-PACKAGE_VERSION='1.34.6'
+-PACKAGE_STRING='c-ares 1.34.6'
++PACKAGE_VERSION='1.34.8'
++PACKAGE_STRING='c-ares 1.34.8'
+ PACKAGE_BUGREPORT='c-ares mailing list: http://lists.haxx.se/listinfo/c-ares'
+ PACKAGE_URL=''
+ 
+@@ -1430,7 +1430,7 @@ if test "$ac_init_help" = "long"; then
+   # Omit some internal or obsolete options to make the list less imposing.
+   # This message is too long to be a string in the A/UX 3.1 sh.
+   cat <<_ACEOF
+-\`configure' configures c-ares 1.34.6 to adapt to many kinds of systems.
++\`configure' configures c-ares 1.34.8 to adapt to many kinds of systems.
+ 
+ Usage: $0 [OPTION]... [VAR=VALUE]...
+ 
+@@ -1501,7 +1501,7 @@ fi
+ 
+ if test -n "$ac_init_help"; then
+   case $ac_init_help in
+-     short | recursive ) echo "Configuration of c-ares 1.34.6:";;
++     short | recursive ) echo "Configuration of c-ares 1.34.8:";;
+    esac
+   cat <<\_ACEOF
+ 
+@@ -1647,7 +1647,7 @@ fi
+ test -n "$ac_init_help" && exit $ac_status
+ if $ac_init_version; then
+   cat <<\_ACEOF
+-c-ares configure 1.34.6
++c-ares configure 1.34.8
+ generated by GNU Autoconf 2.71
+ 
+ Copyright (C) 2021 Free Software Foundation, Inc.
+@@ -2271,7 +2271,7 @@ cat >config.log <<_ACEOF
+ This file contains any messages produced by compilers while
+ running configure, to aid debugging if configure makes a mistake.
+ 
+-It was created by c-ares $as_me 1.34.6, which was
++It was created by c-ares $as_me 1.34.8, which was
+ generated by GNU Autoconf 2.71.  Invocation command line was
+ 
+   $ $0$ac_configure_args_raw
+@@ -3245,7 +3245,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+ 
+ 
+ 
+-CARES_VERSION_INFO="21:5:19"
++CARES_VERSION_INFO="21:7:19"
+ 
+ 
+ 
+@@ -6818,7 +6818,7 @@ fi
+ 
+ # Define the identity of the package.
+  PACKAGE='c-ares'
+- VERSION='1.34.6'
++ VERSION='1.34.8'
+ 
+ 
+ printf "%s\n" "#define PACKAGE \"$PACKAGE\"" >>confdefs.h
+@@ -28238,7 +28238,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
+ # report actual input values of CONFIG_FILES etc. instead of their
+ # values after options handling.
+ ac_log="
+-This file was extended by c-ares $as_me 1.34.6, which was
++This file was extended by c-ares $as_me 1.34.8, which was
+ generated by GNU Autoconf 2.71.  Invocation command line was
+ 
+   CONFIG_FILES    = $CONFIG_FILES
+@@ -28306,7 +28306,7 @@ ac_cs_config_escaped=`printf "%s\n" "$ac_cs_config" | sed "s/^ //; s/'/'\\\\\\\\
+ cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1
+ ac_cs_config='$ac_cs_config_escaped'
+ ac_cs_version="\\
+-c-ares config.status 1.34.6
++c-ares config.status 1.34.8
+ configured by $0, generated by GNU Autoconf 2.71,
+   with options \\"\$ac_cs_config\\"
+ 
+diff --git a/deps/cares/configure.ac b/deps/cares/configure.ac
+index 744a99be56..637dfb153b 100644
+--- a/deps/cares/configure.ac
++++ b/deps/cares/configure.ac
+@@ -2,10 +2,10 @@ dnl Copyright (C) The c-ares project and its contributors
+ dnl SPDX-License-Identifier: MIT
+ AC_PREREQ([2.69])
+ 
+-AC_INIT([c-ares], [1.34.6],
++AC_INIT([c-ares], [1.34.8],
+   [c-ares mailing list: http://lists.haxx.se/listinfo/c-ares])
+ 
+-CARES_VERSION_INFO="21:5:19"
++CARES_VERSION_INFO="21:7:19"
+ dnl This flag accepts an argument of the form current[:revision[:age]]. So,
+ dnl passing -version-info 3:12:1 sets current to 3, revision to 12, and age to
+ dnl 1.
+diff --git a/deps/cares/docs/ares_dns_record.3 b/deps/cares/docs/ares_dns_record.3
+index 47ca95b057..723f9ab4b9 100644
+--- a/deps/cares/docs/ares_dns_record.3
++++ b/deps/cares/docs/ares_dns_record.3
+@@ -140,7 +140,7 @@ DNS Classes for requests and responses:
+ .B ARES_CLASS_CHAOS
+ - CHAOS
+ .br
+-.B ARES_CLASS_HESOID
++.B ARES_CLASS_HESIOD
+ - Hesoid [Dyer 87]
+ .br
+ .B ARES_CLASS_NONE
+diff --git a/deps/cares/docs/ares_getaddrinfo.3 b/deps/cares/docs/ares_getaddrinfo.3
+index 5544ce2022..661381e092 100644
+--- a/deps/cares/docs/ares_getaddrinfo.3
++++ b/deps/cares/docs/ares_getaddrinfo.3
+@@ -27,6 +27,19 @@ The
+ and
+ .I service
+ parameters give the hostname and service as NULL-terminated C strings.
++Either
++.I name
++or
++.I service
++may be NULL, but not both.  If
++.I name
++is NULL, the returned addresses are synthesized from
++.IR service :
++the wildcard address (0.0.0.0 or ::) is returned when
++.B ARES_AI_PASSIVE
++is set in
++.IR ai_flags ,
++otherwise the loopback address (127.0.0.1 or ::1) is returned.
+ The
+ .I hints
+ parameter is an
+@@ -63,6 +76,16 @@ If this option is set
+ .I service
+ field will be treated as a numeric value.
+ .TP 19
++.B ARES_AI_PASSIVE
++If this option is set and
++.I name
++is NULL, the returned addresses will use the wildcard address (0.0.0.0 or ::),
++suitable for
++.BR bind (2)ing
++a socket that will accept connections.  If not set and
++.I name
++is NULL, the loopback address (127.0.0.1 or ::1) is returned instead.
++.TP 19
+ .B ARES_AI_CANONNAME
+ The ares_addrinfo structure will return a canonical names list.
+ .TP 19
+diff --git a/deps/cares/docs/ares_gethostbyaddr.3 b/deps/cares/docs/ares_gethostbyaddr.3
+index cc4092285c..f5b5f0864f 100644
+--- a/deps/cares/docs/ares_gethostbyaddr.3
++++ b/deps/cares/docs/ares_gethostbyaddr.3
+@@ -80,7 +80,16 @@ points to a
+ containing the name of the host returned by the query.  The callback
+ need not and should not attempt to free the memory pointed to by
+ .IR hostent ;
+-the ares library will free it when the callback returns.  If the query
++the ares library will free it when the callback returns.  The callback
++.B must not
++modify the
++.B struct hostent
++or retain a reference to it after returning; it is owned by c-ares and is only
++valid for the duration of the callback.  The parameter is intentionally not
++declared
++.B const
++solely to preserve API/ABI compatibility with existing applications.
++If the query
+ did not complete successfully,
+ .I hostent
+ will be
+diff --git a/deps/cares/docs/ares_gethostbyname.3 b/deps/cares/docs/ares_gethostbyname.3
+index 06d075ca6c..40d3403431 100644
+--- a/deps/cares/docs/ares_gethostbyname.3
++++ b/deps/cares/docs/ares_gethostbyname.3
+@@ -88,7 +88,16 @@ points to a
+ containing the name of the host returned by the query.  The callback
+ need not and should not attempt to free the memory pointed to by
+ .IR hostent ;
+-the ares library will free it when the callback returns.  If the query
++the ares library will free it when the callback returns.  The callback
++.B must not
++modify the
++.B struct hostent
++or retain a reference to it after returning; it is owned by c-ares and is only
++valid for the duration of the callback.  The parameter is intentionally not
++declared
++.B const
++solely to preserve API/ABI compatibility with existing applications.
++If the query
+ did not complete successfully,
+ .I hostent
+ will be
+diff --git a/deps/cares/docs/ares_getnameinfo.3 b/deps/cares/docs/ares_getnameinfo.3
+index 66b04f9efc..800b57b31f 100644
+--- a/deps/cares/docs/ares_getnameinfo.3
++++ b/deps/cares/docs/ares_getnameinfo.3
+@@ -24,7 +24,7 @@ function is defined for protocol-independent address translation. The function
+ is a combination of \fIares_gethostbyaddr(3)\fP and \fIgetservbyport(3)\fP. The function will
+ translate the address either by executing a host query on the name service channel
+ identified by
+-.IR channel 
++.IR channel
+ or it will attempt to resolve it locally if possible.
+ The parameters
+ .I sa
+@@ -68,8 +68,8 @@ A hostname lookup is being requested.
+ A service name lookup is being requested.
+ .PP
+ When the query
+-is complete or has 
+-failed, the ares library will invoke \fIcallback\fP.  Completion or failure of 
++is complete or has
++failed, the ares library will invoke \fIcallback\fP.  Completion or failure of
+ the query may happen immediately, or may happen during a later call to
+ \fIares_process(3)\fP, \fIares_destroy(3)\fP or \fIares_cancel(3)\fP.
+ .PP
+@@ -129,19 +129,31 @@ given request.
+ .PP
+ On successful completion of the query, the callback argument
+ .I node
+-contains a string representing the hostname (assuming 
++contains a string representing the hostname (assuming
+ .B ARES_NI_LOOKUPHOST
+-was specified). Additionally, 
++was specified). Additionally,
+ .I service
+ contains a string representing the service name (assuming
+ .B ARES_NI_LOOKUPSERVICE
+ was specified).
+ If the query did not complete successfully, or one of the values
+-was not requested, 
++was not requested,
+ .I node
+ or
+ .I service
+-will be 
++will be
+ .BR NULL .
++.PP
++The
++.I node
++and
++.I service
++strings are owned by the c-ares library and are only valid for the duration of
++the callback.  The callback
++.B must not
++modify or free them, and must not retain references to them after returning;
++treat them as read-only.  The parameters are intentionally not declared
++.B const
++solely to preserve API/ABI compatibility with existing applications.
+ .SH SEE ALSO
+ .BR ares_process (3),
+diff --git a/deps/cares/docs/ares_query.3 b/deps/cares/docs/ares_query.3
+index 3aa428b00b..401d700a44 100644
+--- a/deps/cares/docs/ares_query.3
++++ b/deps/cares/docs/ares_query.3
+@@ -146,6 +146,16 @@ or
+ .I abuf
+ will be non-NULL, otherwise they will be NULL.
+ 
++The
++.I abuf
++buffer is owned by the c-ares library and is only valid for the duration of
++the callback.  The callback
++.B must not
++modify or free it, and must not retain a reference to it after returning; treat
++it as read-only.  The parameter is intentionally not declared
++.B const
++solely to preserve API/ABI compatibility with existing applications.
++
+ .SH AVAILABILITY
+ \fBares_query_dnsrec(3)\fP was introduced in c-ares 1.28.0.
+ 
+diff --git a/deps/cares/docs/ares_search.3 b/deps/cares/docs/ares_search.3
+index 66791b47e9..12d1dede09 100644
+--- a/deps/cares/docs/ares_search.3
++++ b/deps/cares/docs/ares_search.3
+@@ -152,6 +152,15 @@ will usually be NULL and
+ will usually be 0, but in some cases an unsuccessful query result may
+ be placed in
+ .IR abuf .
++The
++.I abuf
++buffer is owned by the c-ares library and is only valid for the duration of
++the callback.  The callback
++.B must not
++modify or free it, and must not retain a reference to it after returning; treat
++it as read-only.  The parameter is intentionally not declared
++.B const
++solely to preserve API/ABI compatibility with existing applications.
+ 
+ The \fIares_search_dnsrec(3)\fP function behaves identically to
+ \fIares_search(3)\fP, but takes an initialized and filled DNS record object to
+diff --git a/deps/cares/docs/ares_send.3 b/deps/cares/docs/ares_send.3
+index df3e3bbe41..cf669a001d 100644
+--- a/deps/cares/docs/ares_send.3
++++ b/deps/cares/docs/ares_send.3
+@@ -131,6 +131,16 @@ and
+ .IR alen
+ for \fIares_send(3)\fP will be non-NULL.
+ 
++The
++.I abuf
++buffer is owned by the c-ares library and is only valid for the duration of
++the callback.  The callback
++.B must not
++modify or free it, and must not retain a reference to it after returning; treat
++it as read-only.  The parameter is intentionally not declared
++.B const
++solely to preserve API/ABI compatibility with existing applications.
++
+ Unless the flag
+ .B ARES_FLAG_NOCHECKRESP
+ was set at channel initialization time, \fIares_send_dnsrec(3)\fP and
+diff --git a/deps/cares/include/ares.h b/deps/cares/include/ares.h
+index 7fe3ec78f4..1e38463a04 100644
+--- a/deps/cares/include/ares.h
++++ b/deps/cares/include/ares.h
+@@ -434,6 +434,14 @@ struct ares_addr {
+ /* DNS record parser, writer, and helpers */
+ #include "ares_dns_record.h"
+ 
++/* IMPORTANT: the pointer parameters below (abuf, hostent, node, service) are
++ * intentionally NOT const.  Marking them const changes the function-pointer
++ * type and breaks API/ABI compatibility for existing C and (especially) C++
++ * applications that declare their callbacks with the historical non-const
++ * signature.  This was tried in PR #1060 and reverted for that reason.  These
++ * buffers are owned by c-ares and MUST be treated as read-only by the callback
++ * (do not modify or free them); that contract is documented in the man pages,
++ * not enforced via const, to preserve compatibility.  Do not re-add const. */
+ typedef void (*ares_callback)(void *arg, int status, int timeouts,
+                               unsigned char *abuf, int alen);
+ 
+diff --git a/deps/cares/include/ares_dns_record.h b/deps/cares/include/ares_dns_record.h
+index cec9f47f63..1e47a78e14 100644
+--- a/deps/cares/include/ares_dns_record.h
++++ b/deps/cares/include/ares_dns_record.h
+@@ -76,7 +76,8 @@ typedef enum {
+ typedef enum {
+   ARES_CLASS_IN     = 1,   /*!< Internet */
+   ARES_CLASS_CHAOS  = 3,   /*!< CHAOS */
+-  ARES_CLASS_HESOID = 4,   /*!< Hesoid [Dyer 87] */
++  ARES_CLASS_HESIOD = 4,   /*!< Hesiod [Dyer 87] */
++  ARES_CLASS_HESOID = 4,   /*!< typo from older c-ares version for Hesiod */
+   ARES_CLASS_NONE   = 254, /*!< RFC 2136 */
+   ARES_CLASS_ANY    = 255  /*!< Any class (requests only) */
+ } ares_dns_class_t;
+@@ -1092,7 +1093,7 @@ CARES_EXTERN ares_status_t ares_dns_parse(const unsigned char *buf,
+  *
+  *  \param[in]  dnsrec   Pointer to initialized and filled DNS record object.
+  *  \param[out] buf      Pointer passed by reference to be filled in with with
+- *                       DNS message.  Must be ares_free()'d by caller.
++ *                       DNS message.  Must be ares_free_string()'d by caller.
+  *  \param[out] buf_len  Length of returned buffer containing DNS message.
+  *  \return ARES_SUCCESS on success
+  */
+diff --git a/deps/cares/include/ares_version.h b/deps/cares/include/ares_version.h
+index 006029c12d..f836d5f918 100644
+--- a/deps/cares/include/ares_version.h
++++ b/deps/cares/include/ares_version.h
+@@ -32,8 +32,8 @@
+ 
+ #define ARES_VERSION_MAJOR 1
+ #define ARES_VERSION_MINOR 34
+-#define ARES_VERSION_PATCH 6
+-#define ARES_VERSION_STR "1.34.6"
++#define ARES_VERSION_PATCH 8
++#define ARES_VERSION_STR   "1.34.8"
+ 
+ /* NOTE: We cannot make the version string a C preprocessor stringify operation
+  *       due to assumptions made by integrators that aren't properly using
+diff --git a/deps/cares/src/lib/CMakeLists.txt b/deps/cares/src/lib/CMakeLists.txt
+index bdb2690fb6..a4c1e73f1b 100644
+--- a/deps/cares/src/lib/CMakeLists.txt
++++ b/deps/cares/src/lib/CMakeLists.txt
+@@ -66,6 +66,8 @@ IF (CARES_SHARED)
+ 
+ 	TARGET_COMPILE_DEFINITIONS (${PROJECT_NAME} PRIVATE HAVE_CONFIG_H=1 CARES_BUILDING_LIBRARY)
+ 
++	cares_set_werror (${PROJECT_NAME})
++
+ 	TARGET_LINK_LIBRARIES (${PROJECT_NAME}
+ 		PUBLIC ${CARES_DEPENDENT_LIBS}
+ 		PRIVATE ${CMAKE_THREAD_LIBS_INIT}
+@@ -136,6 +138,8 @@ IF (CARES_STATIC)
+ 
+ 	TARGET_COMPILE_DEFINITIONS (${LIBNAME} PRIVATE HAVE_CONFIG_H=1 CARES_BUILDING_LIBRARY)
+ 
++	cares_set_werror (${LIBNAME})
++
+ 	# Only matters on Windows
+ 	IF (WIN32 OR CYGWIN)
+ 		TARGET_COMPILE_DEFINITIONS (${LIBNAME} PUBLIC CARES_STATICLIB)
+diff --git a/deps/cares/src/lib/Makefile.in b/deps/cares/src/lib/Makefile.in
+index e92732eaf7..a9630300c0 100644
+--- a/deps/cares/src/lib/Makefile.in
++++ b/deps/cares/src/lib/Makefile.in
+@@ -15,7 +15,7 @@
+ @SET_MAKE@
+ 
+ # aminclude_static.am generated automatically by Autoconf
+-# from AX_AM_MACROS_STATIC on Mon Dec  8 16:21:41 UTC 2025
++# from AX_AM_MACROS_STATIC on Tue Jul  7 16:14:13 UTC 2026
+ 
+ # Copyright (C) The c-ares project and its contributors
+ # SPDX-License-Identifier: MIT
+diff --git a/deps/cares/src/lib/ares_addrinfo_localhost.c b/deps/cares/src/lib/ares_addrinfo_localhost.c
+index 2abb0c48a6..b65cf48a2f 100644
+--- a/deps/cares/src/lib/ares_addrinfo_localhost.c
++++ b/deps/cares/src/lib/ares_addrinfo_localhost.c
+@@ -67,13 +67,8 @@ ares_status_t ares_append_ai_node(int aftype, unsigned short port,
+                                   struct ares_addrinfo_node **nodes)
+ {
+   struct ares_addrinfo_node *node;
+-
+-  node = ares_append_addrinfo_node(nodes);
+-  if (!node) {
+-    return ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+-  }
+-
+-  memset(node, 0, sizeof(*node));
++  struct sockaddr           *sa;
++  socklen_t                  salen;
+ 
+   if (aftype == AF_INET) {
+     struct sockaddr_in *sin = ares_malloc(sizeof(*sin));
+@@ -86,14 +81,9 @@ ares_status_t ares_append_ai_node(int aftype, unsigned short port,
+     sin->sin_family = AF_INET;
+     sin->sin_port   = htons(port);
+ 
+-    node->ai_addr    = (struct sockaddr *)sin;
+-    node->ai_family  = AF_INET;
+-    node->ai_addrlen = sizeof(*sin);
+-    node->ai_addr    = (struct sockaddr *)sin;
+-    node->ai_ttl     = (int)ttl;
+-  }
+-
+-  if (aftype == AF_INET6) {
++    sa    = (struct sockaddr *)sin;
++    salen = sizeof(*sin);
++  } else if (aftype == AF_INET6) {
+     struct sockaddr_in6 *sin6 = ares_malloc(sizeof(*sin6));
+     if (!sin6) {
+       return ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+@@ -104,13 +94,23 @@ ares_status_t ares_append_ai_node(int aftype, unsigned short port,
+     sin6->sin6_family = AF_INET6;
+     sin6->sin6_port   = htons(port);
+ 
+-    node->ai_addr    = (struct sockaddr *)sin6;
+-    node->ai_family  = AF_INET6;
+-    node->ai_addrlen = sizeof(*sin6);
+-    node->ai_addr    = (struct sockaddr *)sin6;
+-    node->ai_ttl     = (int)ttl;
++    sa    = (struct sockaddr *)sin6;
++    salen = sizeof(*sin6);
++  } else {
++    return ARES_EFORMERR;
++  }
++
++  node = ares_append_addrinfo_node(nodes);
++  if (!node) {
++    ares_free(sa);                /* LCOV_EXCL_LINE: OutOfMemory */
++    return ARES_ENOMEM;           /* LCOV_EXCL_LINE: OutOfMemory */
+   }
+ 
++  node->ai_addr    = sa;
++  node->ai_family  = aftype;
++  node->ai_addrlen = salen;
++  node->ai_ttl     = (int)ttl;
++
+   return ARES_SUCCESS;
+ }
+ 
+diff --git a/deps/cares/src/lib/ares_close_sockets.c b/deps/cares/src/lib/ares_close_sockets.c
+index 347f43e6fc..7bb72c31ec 100644
+--- a/deps/cares/src/lib/ares_close_sockets.c
++++ b/deps/cares/src/lib/ares_close_sockets.c
+@@ -112,11 +112,11 @@ void ares_check_cleanup_conns(const ares_channel_t *channel)
+         do_cleanup = ARES_TRUE;
+       }
+ 
+-      /* If the associated server has failures, close it out. Resetting the
+-       * connection (and specifically the source port number) can help resolve
+-       * situations where packets are being dropped.
++      /* If the connection has been retired for new queries, close it out once
++       * idle.  Resetting the connection (and specifically the source port
++       * number) can help resolve situations where packets are being dropped.
+        */
+-      if (conn->server->consec_failures > 0) {
++      if (conn->flags & ARES_CONN_FLAG_NONEW) {
+         do_cleanup = ARES_TRUE;
+       }
+ 
+diff --git a/deps/cares/src/lib/ares_conn.h b/deps/cares/src/lib/ares_conn.h
+index 16ecefdd19..c332de14b1 100644
+--- a/deps/cares/src/lib/ares_conn.h
++++ b/deps/cares/src/lib/ares_conn.h
+@@ -43,7 +43,13 @@ typedef enum {
+   ARES_CONN_FLAG_TFO = 1 << 1,
+   /*! TCP Fast Open has not yet sent its first packet. Gets unset on first
+    *  write to a connection */
+-  ARES_CONN_FLAG_TFO_INITIAL = 1 << 2
++  ARES_CONN_FLAG_TFO_INITIAL = 1 << 2,
++  /*! Connection has been retired: it must not be handed any NEW queries (e.g.
++   *  it experienced a query timeout, suggesting packets are being dropped on
++   *  it).  Its in-flight queries continue to drain and it is cleaned up once
++   *  idle.  This is a per-connection signal so that a transient failure does
++   *  not evict otherwise-healthy connections to the same server. */
++  ARES_CONN_FLAG_NONEW = 1 << 3
+ } ares_conn_flags_t;
+ 
+ typedef enum {
+diff --git a/deps/cares/src/lib/ares_cookie.c b/deps/cares/src/lib/ares_cookie.c
+index 509e12050e..25960db602 100644
+--- a/deps/cares/src/lib/ares_cookie.c
++++ b/deps/cares/src/lib/ares_cookie.c
+@@ -217,7 +217,7 @@ static const unsigned char *
+ 
+ static ares_bool_t timeval_is_set(const ares_timeval_t *tv)
+ {
+-  if (tv->sec != 0 && tv->usec != 0) {
++  if (tv->sec != 0 || tv->usec != 0) {
+     return ARES_TRUE;
+   }
+   return ARES_FALSE;
+@@ -324,7 +324,7 @@ ares_status_t ares_cookie_apply(ares_dns_record_t *dnsrec, ares_conn_t *conn,
+   if (cookie->state == ARES_COOKIE_UNSUPPORTED) {
+     /* If timer hasn't expired, just delete any possible cookie and return */
+     if (!timeval_expired(&cookie->unsupported_ts, now,
+-                         COOKIE_REGRESSION_TIMEOUT_MS)) {
++                         COOKIE_UNSUPPORTED_TIMEOUT_MS)) {
+       ares_dns_rr_del_opt_byid(rr, ARES_RR_OPT_OPTIONS, ARES_OPT_PARAM_COOKIE);
+       return ARES_SUCCESS;
+     }
+diff --git a/deps/cares/src/lib/ares_getaddrinfo.c b/deps/cares/src/lib/ares_getaddrinfo.c
+index 6009de36a3..6d9e21af4b 100644
+--- a/deps/cares/src/lib/ares_getaddrinfo.c
++++ b/deps/cares/src/lib/ares_getaddrinfo.c
+@@ -242,6 +242,11 @@ static ares_bool_t fake_addrinfo(const char *name, unsigned short port,
+   ares_status_t               status = ARES_SUCCESS;
+   ares_bool_t                 result = ARES_FALSE;
+   int                         family = hints->ai_family;
++
++  if (name == NULL) {
++    return ARES_FALSE; /* LCOV_EXCL_LINE: DefensiveCoding */
++  }
++
+   if (family == AF_INET || family == AF_INET6 || family == AF_UNSPEC) {
+     /* It only looks like an IP address if it's all numbers and dots. */
+     size_t      numdots = 0;
+@@ -268,6 +273,7 @@ static ares_bool_t fake_addrinfo(const char *name, unsigned short port,
+       if (result) {
+         status = ares_append_ai_node(AF_INET, port, 0, &addr4, &ai->nodes);
+         if (status != ARES_SUCCESS) {
++          ares_freeaddrinfo(ai);
+           callback(arg, (int)status, 0, NULL); /* LCOV_EXCL_LINE: OutOfMemory */
+           return ARES_TRUE;                    /* LCOV_EXCL_LINE: OutOfMemory */
+         }
+@@ -282,6 +288,7 @@ static ares_bool_t fake_addrinfo(const char *name, unsigned short port,
+     if (result) {
+       status = ares_append_ai_node(AF_INET6, port, 0, &addr6, &ai->nodes);
+       if (status != ARES_SUCCESS) {
++        ares_freeaddrinfo(ai);
+         callback(arg, (int)status, 0, NULL); /* LCOV_EXCL_LINE: OutOfMemory */
+         return ARES_TRUE;                    /* LCOV_EXCL_LINE: OutOfMemory */
+       }
+@@ -575,21 +582,55 @@ static void host_callback(void *arg, ares_status_t status, size_t timeouts,
+   /* at this point we keep on waiting for the next query to finish */
+ }
+ 
+-static ares_bool_t numeric_service_to_port(const char *service,
+-                                           unsigned short *port)
++/* Per POSIX getaddrinfo(), when no node/hostname is provided the returned
++ * addresses are synthesized from the service: the wildcard address when
++ * ARES_AI_PASSIVE is set (suitable for bind()ing a listening socket),
++ * otherwise the loopback address (suitable for connect()ing to a peer on the
++ * local host). */
++static ares_status_t
++  ares_append_nulladdr(unsigned short                    port,
++                       const struct ares_addrinfo_hints *hints,
++                       struct ares_addrinfo             *ai)
+ {
+-  char *end;
+-  unsigned long val;
++  int                        family  = hints->ai_family;
++  ares_bool_t                passive = ARES_FALSE;
++  ares_status_t              status;
++  struct ares_addrinfo_node *node;
+ 
+-  errno = 0;
+-  val   = strtoul(service, &end, 10);
++  if (hints->ai_flags & ARES_AI_PASSIVE) {
++    passive = ARES_TRUE;
++  }
+ 
+-  if (errno == 0 && *end == '\0' && val <= 65535) {
+-    *port = (unsigned short)val;
+-    return ARES_TRUE;
++  if (family == AF_INET6 || family == AF_UNSPEC) {
++    struct ares_in6_addr addr6;
++    memset(&addr6, 0, sizeof(addr6)); /* wildcard "::" */
++    if (!passive) {
++      ares_inet_pton(AF_INET6, "::1", &addr6);
++    }
++    status = ares_append_ai_node(AF_INET6, port, 0, &addr6, &ai->nodes);
++    if (status != ARES_SUCCESS) {
++      return status; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
+   }
+ 
+-  return ARES_FALSE;
++  if (family == AF_INET || family == AF_UNSPEC) {
++    struct in_addr addr4;
++    memset(&addr4, 0, sizeof(addr4)); /* wildcard "0.0.0.0" */
++    if (!passive) {
++      ares_inet_pton(AF_INET, "127.0.0.1", &addr4);
++    }
++    status = ares_append_ai_node(AF_INET, port, 0, &addr4, &ai->nodes);
++    if (status != ARES_SUCCESS) {
++      return status; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
++  for (node = ai->nodes; node != NULL; node = node->ai_next) {
++    node->ai_socktype = hints->ai_socktype;
++    node->ai_protocol = hints->ai_protocol;
++  }
++
++  return ARES_SUCCESS;
+ }
+ 
+ static void ares_getaddrinfo_int(ares_channel_t *channel, const char *name,
+@@ -616,6 +657,13 @@ static void ares_getaddrinfo_int(ares_channel_t *channel, const char *name,
+     return;
+   }
+ 
++  /* POSIX getaddrinfo() requires that at least one of node (name) or service
++   * be provided. */
++  if (name == NULL && service == NULL) {
++    callback(arg, ARES_ENOTFOUND, 0, NULL);
++    return;
++  }
++
+   if (ares_is_onion_domain(name)) {
+     callback(arg, ARES_ENOTFOUND, 0, NULL);
+     return;
+@@ -623,14 +671,14 @@ static void ares_getaddrinfo_int(ares_channel_t *channel, const char *name,
+ 
+   if (service) {
+     if (hints->ai_flags & ARES_AI_NUMERICSERV) {
+-      if (!numeric_service_to_port(service, &port)) {
++      if (!ares_parse_port(service, &port, ARES_TRUE)) {
+         callback(arg, ARES_ESERVICE, 0, NULL);
+         return;
+       }
+     } else {
+       port = lookup_service(service, 0);
+       if (!port) {
+-        if (!numeric_service_to_port(service, &port)) {
++        if (!ares_parse_port(service, &port, ARES_TRUE)) {
+           callback(arg, ARES_ESERVICE, 0, NULL);
+           return;
+         }
+@@ -644,6 +692,19 @@ static void ares_getaddrinfo_int(ares_channel_t *channel, const char *name,
+     return;
+   }
+ 
++  /* No node/hostname was provided (service-only lookup): synthesize wildcard
++   * or loopback addresses from the resolved port instead of issuing a query. */
++  if (name == NULL) {
++    status = ares_append_nulladdr(port, hints, ai);
++    if (status != ARES_SUCCESS) {
++      ares_freeaddrinfo(ai);               /* LCOV_EXCL_LINE: OutOfMemory */
++      callback(arg, (int)status, 0, NULL); /* LCOV_EXCL_LINE: OutOfMemory */
++      return;                              /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++    callback(arg, ARES_SUCCESS, 0, ai);
++    return;
++  }
++
+   if (fake_addrinfo(name, port, hints, ai, callback, arg)) {
+     return;
+   }
+diff --git a/deps/cares/src/lib/ares_gethostbyname.c b/deps/cares/src/lib/ares_gethostbyname.c
+index d451b46851..640df74cfc 100644
+--- a/deps/cares/src/lib/ares_gethostbyname.c
++++ b/deps/cares/src/lib/ares_gethostbyname.c
+@@ -102,6 +102,10 @@ void ares_gethostbyname(ares_channel_t *channel, const char *name, int family,
+   struct ares_addrinfo_hints hints;
+   struct host_query         *ghbn_arg;
+ 
++  if (channel == NULL) {
++    return;
++  }
++
+   if (!callback) {
+     return;
+   }
+diff --git a/deps/cares/src/lib/ares_hosts_file.c b/deps/cares/src/lib/ares_hosts_file.c
+index c0fb80766a..0c8aebaf6b 100644
+--- a/deps/cares/src/lib/ares_hosts_file.c
++++ b/deps/cares/src/lib/ares_hosts_file.c
+@@ -674,6 +674,9 @@ static ares_status_t ares_hosts_path(const ares_channel_t *channel,
+                      &dwLength);
+     ExpandEnvironmentStringsA(tmp, PATH_HOSTS, MAX_PATH);
+     RegCloseKey(hkeyHosts);
++    if (strlen(PATH_HOSTS)+strlen(WIN_PATH_HOSTS) >= MAX_PATH) {
++      return ARES_ENOTFOUND;
++    }
+     strcat(PATH_HOSTS, WIN_PATH_HOSTS);
+ #elif defined(WATT32)
+     const char *PATH_HOSTS = _w32_GetHostsFile();
+diff --git a/deps/cares/src/lib/ares_init.c b/deps/cares/src/lib/ares_init.c
+index dc094c4df6..dc3c1e4f53 100644
+--- a/deps/cares/src/lib/ares_init.c
++++ b/deps/cares/src/lib/ares_init.c
+@@ -102,6 +102,20 @@ static int server_sort_cb(const void *data1, const void *data2)
+   if (s1->consec_failures > s2->consec_failures) {
+     return 1;
+   }
++
++  /* Among servers with the same failure count, prefer the one that failed
++   * least recently so that a server that went down long ago (and may have
++   * since recovered) is tried before one that just failed.  This also keeps
++   * retries rotating across servers once the failure counts saturate at
++   * SERVER_CONSEC_FAILURES_CAP.  Healthy servers all have a zeroed retry
++   * time and fall through to configuration order. */
++  if (s1->next_retry_time.sec != s2->next_retry_time.sec) {
++    return s1->next_retry_time.sec < s2->next_retry_time.sec ? -1 : 1;
++  }
++  if (s1->next_retry_time.usec != s2->next_retry_time.usec) {
++    return s1->next_retry_time.usec < s2->next_retry_time.usec ? -1 : 1;
++  }
++
+   if (s1->idx < s2->idx) {
+     return -1;
+   }
+diff --git a/deps/cares/src/lib/ares_library_init.c b/deps/cares/src/lib/ares_library_init.c
+index 2b91692bae..10c88de009 100644
+--- a/deps/cares/src/lib/ares_library_init.c
++++ b/deps/cares/src/lib/ares_library_init.c
+@@ -105,6 +105,27 @@ void *ares_realloc_zero(void *ptr, size_t orig_size, size_t new_size)
+   return p;
+ }
+ 
++void *ares_malloc_zero_array(size_t num, size_t size)
++{
++  size_t total;
++  if (ares_size_t_mul_overflow(num, size, &total)) {
++    return NULL;
++  }
++  return ares_malloc_zero(total);
++}
++
++void *ares_realloc_zero_array(void *ptr, size_t orig_num, size_t new_num,
++                              size_t size)
++{
++  size_t orig_total;
++  size_t new_total;
++  if (ares_size_t_mul_overflow(orig_num, size, &orig_total) ||
++      ares_size_t_mul_overflow(new_num, size, &new_total)) {
++    return NULL;
++  }
++  return ares_realloc_zero(ptr, orig_total, new_total);
++}
++
+ int ares_library_init(int flags)
+ {
+   if (ares_initialized) {
+diff --git a/deps/cares/src/lib/ares_private.h b/deps/cares/src/lib/ares_private.h
+index d6bd426d39..04d4576ed2 100644
+--- a/deps/cares/src/lib/ares_private.h
++++ b/deps/cares/src/lib/ares_private.h
+@@ -131,6 +131,13 @@ W32_FUNC const char *_w32_GetHostsFile(void);
+ #define DEFAULT_SERVER_RETRY_CHANCE 10
+ #define DEFAULT_SERVER_RETRY_DELAY  5000
+ 
++/* Upper bound on the consecutive failure count tracked per server.  Only the
++ * relative order of the counts is used for server selection, so magnitude
++ * beyond "clearly down" carries no additional signal.  Capping it bounds how
++ * long a server that failed for an extended period sorts behind other failed
++ * servers once it comes back online. */
++#define SERVER_CONSEC_FAILURES_CAP 16
++
+ typedef void (*ares_query_enqueue_cb)(void *data);
+ 
+ struct ares_query;
+@@ -418,6 +425,9 @@ ares_status_t ares_parse_sortlist(struct apattern **sortlist, size_t *nsort,
+ ares_status_t ares_lookup_hostaliases(const ares_channel_t *channel,
+                                       const char *name, char **alias);
+ 
++ares_bool_t   ares_parse_port(const char *str, unsigned short *port,
++                              ares_bool_t allow_zero);
++
+ ares_status_t ares_cat_domain(const char *name, const char *domain, char **s);
+ ares_status_t ares_sortaddrinfo(ares_channel_t            *channel,
+                                 struct ares_addrinfo_node *ai_node);
+@@ -539,10 +549,15 @@ void ares_gethostbyaddr_nolock(ares_channel_t *channel, const void *addr,
+  *                         ares_free()'d by the caller.
+  *  \param[in] is_hostname if ARES_TRUE, will validate the character set for
+  *                         a valid hostname or will return error.
++ *  \param[in] allow_compression if ARES_FALSE, a compression pointer
++ *                         encountered while parsing the name will be rejected
++ *                         with ARES_EBADNAME.  Used for RR types (e.g. SRV)
++ *                         whose RDATA names must not use name compression.
+  *  \return ARES_SUCCESS on success
+  */
+ ares_status_t ares_dns_name_parse(ares_buf_t *buf, char **name,
+-                                  ares_bool_t is_hostname);
++                                  ares_bool_t is_hostname,
++                                  ares_bool_t allow_compression);
+ 
+ /*! Write the DNS name to the buffer in the DNS domain-name syntax as a
+  *  series of labels.  The maximum domain name length is 255 characters with
+diff --git a/deps/cares/src/lib/ares_process.c b/deps/cares/src/lib/ares_process.c
+index 9352968419..b2316c4b33 100644
+--- a/deps/cares/src/lib/ares_process.c
++++ b/deps/cares/src/lib/ares_process.c
+@@ -45,7 +45,6 @@
+ #include <limits.h>
+ 
+ 
+-static void          timeadd(ares_timeval_t *now, size_t millisecs);
+ static ares_status_t process_write(ares_channel_t *channel,
+                                    ares_socket_t   write_fd);
+ static ares_status_t process_read(ares_channel_t       *channel,
+@@ -66,6 +65,11 @@ static void        end_query(ares_channel_t *channel, ares_server_t *server,
+                              ares_query_t *query, ares_status_t status,
+                              ares_dns_record_t *dnsrec,
+                              ares_array_t **requeue);
++static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
++                                         ares_query_t         *query,
++                                         const ares_timeval_t *now,
++                                         ares_array_t        **requeue);
++static void          ares_detach_query(ares_query_t *query);
+ 
+ static void        ares_query_remove_from_conn(ares_query_t *query)
+ {
+@@ -124,13 +128,22 @@ static void server_increment_failures(ares_server_t *server,
+     return; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
+-  server->consec_failures++;
+-  ares_slist_node_reinsert(node);
++  /* Cap the failure count.  Only the relative order matters for server
++   * selection, and an uncapped count would require an unbounded number of
++   * failures on other servers before a server that failed during an
++   * extended outage could be selected again. */
++  if (server->consec_failures < SERVER_CONSEC_FAILURES_CAP) {
++    server->consec_failures++;
++  }
+ 
++  /* Must update the retry time before reinserting since the sort uses it to
++   * order servers with the same failure count */
+   ares_tvnow(&next_retry_time);
+-  timeadd(&next_retry_time, channel->server_retry_delay);
++  ares_timeval_add(&next_retry_time, channel->server_retry_delay);
+   server->next_retry_time = next_retry_time;
+ 
++  ares_slist_node_reinsert(node);
++
+   invoke_server_state_cb(server, ARES_FALSE,
+                          used_tcp == ARES_TRUE ? ARES_SERV_STATE_TCP
+                                                : ARES_SERV_STATE_UDP);
+@@ -148,12 +161,13 @@ static void server_set_good(ares_server_t *server, ares_bool_t used_tcp)
+ 
+   if (server->consec_failures > 0) {
+     server->consec_failures = 0;
++    /* Must update the retry time before reinserting since the sort uses it
++     * to order servers with the same failure count */
++    server->next_retry_time.sec  = 0;
++    server->next_retry_time.usec = 0;
+     ares_slist_node_reinsert(node);
+   }
+ 
+-  server->next_retry_time.sec  = 0;
+-  server->next_retry_time.usec = 0;
+-
+   invoke_server_state_cb(server, ARES_TRUE,
+                          used_tcp == ARES_TRUE ? ARES_SERV_STATE_TCP
+                                                : ARES_SERV_STATE_UDP);
+@@ -178,18 +192,6 @@ ares_bool_t ares_timedout(const ares_timeval_t *now,
+            : ARES_FALSE;
+ }
+ 
+-/* add the specific number of milliseconds to the time in the first argument */
+-static void timeadd(ares_timeval_t *now, size_t millisecs)
+-{
+-  now->sec  += (ares_int64_t)millisecs / 1000;
+-  now->usec += (unsigned int)((millisecs % 1000) * 1000);
+-
+-  if (now->usec >= 1000000) {
+-    now->sec  += now->usec / 1000000;
+-    now->usec %= 1000000;
+-  }
+-}
+-
+ static ares_status_t ares_process_fds_nolock(ares_channel_t         *channel,
+                                              const ares_fd_events_t *events,
+                                              size_t nevents, unsigned int flags)
+@@ -445,12 +447,19 @@ void ares_process_pending_write(ares_channel_t *channel)
+   ares_channel_unlock(channel);
+ }
+ 
+-static ares_status_t read_conn_packets(ares_conn_t *conn)
++static ares_status_t read_conn_packets(ares_conn_t *conn,
++  ares_bool_t *conn_error)
+ {
+   ares_bool_t           read_again;
+   ares_conn_err_t       err;
+   const ares_channel_t *channel = conn->server->channel;
+ 
++  if (conn_error == NULL) {
++    return ARES_EFORMERR;
++  }
++
++  *conn_error = ARES_FALSE;
++
+   do {
+     size_t         count;
+     size_t         len = 65535;
+@@ -498,6 +507,18 @@ static ares_status_t read_conn_packets(ares_conn_t *conn)
+ 
+     /* If UDP, overwrite length */
+     if (!(conn->flags & ARES_CONN_FLAG_TCP)) {
++      /* The read buffer is grown in powers of two, so a single recvfrom() can
++       * return more than the 2-byte length prefix is able to represent.  A
++       * datagram that large can't be a valid DNS message, and writing the
++       * truncated (unsigned short)count would desync the framing of everything
++       * buffered after it, so discard it.  Standard UDP can't actually deliver
++       * a payload this large (max is 65507 IPv4 / 65527 IPv6); the only vector
++       * is IPv6 jumbograms (RFC 2675), which DNS never uses.  This is purely
++       * defense-in-depth. */
++      if (count > 65535) {
++        ares_buf_set_length(conn->in_buf, start_len);
++        break;
++      }
+       len = ares_buf_len(conn->in_buf);
+       ares_buf_set_length(conn->in_buf, start_len);
+       ares_buf_append_be16(conn->in_buf, (unsigned short)count);
+@@ -508,8 +529,15 @@ static ares_status_t read_conn_packets(ares_conn_t *conn)
+   } while (read_again);
+ 
+   if (err != ARES_CONN_ERR_SUCCESS && err != ARES_CONN_ERR_WOULDBLOCK) {
+-    handle_conn_error(conn, ARES_TRUE, ARES_ECONNREFUSED);
+-    return ARES_ECONNREFUSED;
++    /* If there is no packet data buffered, preserve the historical
++     * immediate connection-failure behavior so retries happen promptly.
++     * Only defer if there is buffered data to parse first. */
++    if (ares_buf_len(conn->in_buf) == 0) {
++      handle_conn_error(conn, ARES_TRUE, ARES_ECONNREFUSED);
++      return ARES_ECONNREFUSED;
++    }
++
++    *conn_error = ARES_TRUE;
+   }
+ 
+   return ARES_SUCCESS;
+@@ -573,6 +601,79 @@ static ares_status_t ares_append_endqueue(ares_array_t     **requeue,
+     dnsrec);
+ }
+ 
++/* Drain the deferred requeue/endqueue list iteratively.  All flush sites
++ * (read_answers(), process_timeouts(), and ares_send_query()) funnel through
++ * here so that:
++ *   1. Retries are re-dispatched by appending to this same list and looping,
++ *      rather than recursing ares_requeue_query() -> ares_send_query() until
++ *      the stack is exhausted (issue #1043).
++ *   2. A query is fully detached from all lookup lists before its callback is
++ *      invoked, so a reentrant ares_cancel() from within that callback cannot
++ *      find and free the same query, which would otherwise double-free it
++ *      (CVE-2026-33630 / GHSA-6wfj-rwm7-3542).
++ *
++ * On return the list has been fully processed, an empty-queue notification has
++ * been sent if appropriate, and *requeue has been destroyed and set to NULL. */
++static ares_status_t ares_flush_requeue(ares_channel_t       *channel,
++                                        const ares_timeval_t *now,
++                                        ares_array_t        **requeue)
++{
++  ares_status_t status = ARES_SUCCESS;
++
++  if (requeue == NULL) {
++    return status;
++  }
++
++  while (*requeue != NULL && ares_array_len(*requeue) > 0) {
++    ares_query_t  *query;
++    ares_requeue_t entry;
++    ares_status_t  internal_status;
++
++    internal_status = ares_array_claim_at(&entry, sizeof(entry), *requeue, 0);
++    if (internal_status != ARES_SUCCESS) {
++      break; /* LCOV_EXCL_LINE: DefensiveCoding */
++    }
++
++    query = ares_htable_szvp_get_direct(channel->queries_by_qid, entry.qid);
++
++    if (entry.type == REQUEUE_REQUEUE) {
++      /* Query disappeared (e.g. a prior callback in this drain cancelled it) */
++      if (query == NULL) {
++        continue;
++      }
++      /* Re-dispatch via the internal entrypoint so any further requeues are
++       * appended back onto this same list and drained by the loop above,
++       * rather than recursing. */
++      internal_status = ares_send_query_int(entry.server, query, now, requeue);
++      /* We only care about ARES_ENOMEM */
++      if (internal_status == ARES_ENOMEM) {
++        status = ARES_ENOMEM;
++      }
++    } else { /* REQUEUE_ENDQUERY */
++      if (query != NULL) {
++        /* Detach the query from all lookup lists BEFORE invoking the callback.
++         * Otherwise a reentrant ares_cancel() from within the callback would
++         * find this query still linked in all_queries/queries_by_qid, free it,
++         * and the ares_free_query() below would then double-free it. */
++        ares_detach_query(query);
++        query->callback(query->arg, entry.status, query->timeouts,
++                        entry.dnsrec);
++        ares_free_query(query);
++      }
++      ares_dns_record_destroy(entry.dnsrec);
++    }
++  }
++
++  /* Don't forget to send notification if queue emptied */
++  if (*requeue != NULL) {
++    ares_queue_notify_empty(channel);
++  }
++  ares_array_destroy(*requeue);
++  *requeue = NULL;
++
++  return status;
++}
++
+ static ares_status_t read_answers(ares_conn_t *conn, const ares_timeval_t *now)
+ {
+   ares_status_t   status;
+@@ -625,43 +726,11 @@ static ares_status_t read_answers(ares_conn_t *conn, const ares_timeval_t *now)
+   }
+ 
+ cleanup:
+-
+-  /* Flush requeue */
+-  while (ares_array_len(requeue) > 0) {
+-    ares_query_t  *query;
+-    ares_requeue_t entry;
+-    ares_status_t  internal_status;
+-
+-    internal_status = ares_array_claim_at(&entry, sizeof(entry), requeue, 0);
+-    if (internal_status != ARES_SUCCESS) {
+-      break;
+-    }
+-
+-    query = ares_htable_szvp_get_direct(channel->queries_by_qid, entry.qid);
+-
+-    if (entry.type == REQUEUE_REQUEUE) {
+-      /* query disappeared */
+-      if (query == NULL) {
+-        continue;
+-      }
+-      internal_status = ares_send_query(entry.server, query, now);
+-      /* We only care about ARES_ENOMEM */
+-      if (internal_status == ARES_ENOMEM) {
+-        status = ARES_ENOMEM;
+-      }
+-    } else { /* REQUEUE_ENDQUERY */
+-      if (query != NULL) {
+-        query->callback(query->arg, entry.status, query->timeouts, entry.dnsrec);
+-        ares_free_query(query);
+-      }
+-      ares_dns_record_destroy(entry.dnsrec);
+-    }
+-  }
+-  /* Don't forget to send notification if queue emptied */
+-  if (requeue != NULL) {
+-    ares_queue_notify_empty(channel);
++  /* Flush requeue - re-dispatch retries and invoke deferred callbacks
++   * iteratively and safely */
++  if (ares_flush_requeue(channel, now, &requeue) == ARES_ENOMEM) {
++    status = ARES_ENOMEM;
+   }
+-  ares_array_destroy(requeue);
+ 
+   return status;
+ }
+@@ -671,24 +740,32 @@ static ares_status_t process_read(ares_channel_t       *channel,
+                                   const ares_timeval_t *now)
+ {
+   ares_conn_t  *conn = ares_conn_from_fd(channel, read_fd);
++  ares_bool_t   conn_error;
+   ares_status_t status;
+ 
+   if (conn == NULL) {
+     return ARES_SUCCESS;
+   }
+ 
+-  /* TODO: There might be a potential issue here where there was a read that
+-   *       read some data, then looped and read again and got a disconnect.
+-   *       Right now, that would cause a resend instead of processing the data
+-   *       we have.  This is fairly unlikely to occur due to only looping if
+-   *       a full buffer of 65535 bytes was read. */
+-  status = read_conn_packets(conn);
++  status = read_conn_packets(conn, &conn_error);
+ 
+   if (status != ARES_SUCCESS) {
+     return status;
+   }
+ 
+-  return read_answers(conn, now);
++  status = read_answers(conn, now);
++  if (status != ARES_SUCCESS) {
++    return status;
++  }
++
++  if (conn_error) {
++    conn = ares_conn_from_fd(channel, read_fd);
++    if (conn != NULL) {
++      handle_conn_error(conn, ARES_TRUE, ARES_ECONNREFUSED);
++    }
++  }
++
++  return ARES_SUCCESS;
+ }
+ 
+ /* If any queries have timed out, note the timeout and move them on. */
+@@ -696,7 +773,8 @@ static ares_status_t process_timeouts(ares_channel_t       *channel,
+                                       const ares_timeval_t *now)
+ {
+   ares_slist_node_t *node;
+-  ares_status_t      status = ARES_SUCCESS;
++  ares_status_t      status  = ARES_SUCCESS;
++  ares_array_t      *requeue = NULL;
+ 
+   /* Just keep popping off the first as this list will re-sort as things come
+    * and go.  We don't want to try to rely on 'next' as some operation might
+@@ -714,14 +792,26 @@ static ares_status_t process_timeouts(ares_channel_t       *channel,
+     query->timeouts++;
+ 
+     conn = query->conn;
++    /* Retire this connection for NEW queries.  A timeout suggests packets are
++     * being dropped on it, so route new queries to a fresh source port while
++     * the in-flight queries here drain (it is cleaned up once idle).  This is
++     * per-connection so a transient failure doesn't stop reuse of healthy
++     * connections to the same server. */
++    conn->flags |= ARES_CONN_FLAG_NONEW;
+     server_increment_failures(conn->server, query->using_tcp);
+-    status = ares_requeue_query(query, now, ARES_ETIMEOUT, ARES_TRUE, NULL,
+-      NULL);
++    status =
++      ares_requeue_query(query, now, ARES_ETIMEOUT, ARES_TRUE, NULL, &requeue);
+     if (status == ARES_ENOMEM) {
+       goto done;
+     }
+   }
+ done:
++  /* Flush requeue - re-dispatch retries and invoke deferred callbacks
++   * iteratively and safely */
++  if (ares_flush_requeue(channel, now, &requeue) == ARES_ENOMEM) {
++    status = ARES_ENOMEM;
++  }
++
+   if (status == ARES_ENOMEM) {
+     return ARES_ENOMEM;
+   }
+@@ -871,7 +961,7 @@ static ares_status_t process_answer(ares_channel_t      *channel,
+   if (issue_might_be_edns(query->query, rdnsrec)) {
+     status = rewrite_without_edns(query);
+     if (status != ARES_SUCCESS) {
+-      end_query(channel, server, query, status, NULL, NULL);
++      end_query(channel, server, query, status, NULL, requeue);
+       goto cleanup;
+     }
+ 
+@@ -975,6 +1065,11 @@ ares_status_t ares_requeue_query(ares_query_t *query, const ares_timeval_t *now,
+ {
+   ares_channel_t *channel   = query->channel;
+   size_t          max_tries = ares_slist_len(channel->servers) * channel->tries;
++  ares_server_t  *server    = NULL;
++
++  if (query->conn != NULL) {
++     server = query->conn->server;
++  }
+ 
+   ares_query_remove_from_conn(query);
+ 
+@@ -999,7 +1094,7 @@ ares_status_t ares_requeue_query(ares_query_t *query, const ares_timeval_t *now,
+     query->error_status = ARES_ETIMEOUT;
+   }
+ 
+-  end_query(channel, NULL, query, query->error_status, dnsrec, requeue);
++  end_query(channel, server, query, query->error_status, dnsrec, requeue);
+   return ARES_ETIMEOUT;
+ }
+ 
+@@ -1102,22 +1197,23 @@ static void ares_probe_failed_server(ares_channel_t      *channel,
+   }
+ 
+   /* Select the first server with failures to retry that has passed the retry
+-   * timeout and doesn't already have a pending probe */
++   * timeout and doesn't already have a pending probe.  Skip the server the
++   * triggering query was just sent to since that query is already exercising
++   * it. */
+   ares_tvnow(&now);
+   for (node = ares_slist_node_first(channel->servers); node != NULL;
+        node = ares_slist_node_next(node)) {
+     ares_server_t *node_val = ares_slist_node_val(node);
+-    if (node_val != NULL && node_val->consec_failures > 0 &&
+-        !node_val->probe_pending &&
++    if (node_val != NULL && node_val != server &&
++        node_val->consec_failures > 0 && !node_val->probe_pending &&
+         ares_timedout(&now, &node_val->next_retry_time)) {
+       probe_server = node_val;
+       break;
+     }
+   }
+ 
+-  /* Either nothing to probe or the query was enqueud to the same server
+-   * we were going to probe. Do nothing. */
+-  if (probe_server == NULL || server == probe_server) {
++  /* Nothing to probe */
++  if (probe_server == NULL) {
+     return;
+   }
+ 
+@@ -1148,7 +1244,12 @@ static size_t ares_calc_query_timeout(const ares_query_t   *query,
+    * retry from the last retry */
+   rounds = (query->try_count / num_servers);
+   if (rounds > 0) {
+-    timeplus <<= rounds;
++    if (rounds >= sizeof(timeplus) * CHAR_BIT ||
++        timeplus > (SIZE_MAX >> rounds)) {
++      timeplus = SIZE_MAX;
++    } else {
++      timeplus <<= rounds;
++    }
+   }
+ 
+   if (channel->maxtimeout && timeplus > channel->maxtimeout) {
+@@ -1205,9 +1306,13 @@ static ares_conn_t *ares_fetch_connection(const ares_channel_t *channel,
+     return NULL;
+   }
+ 
+-  /* If the associated server has failures, don't use it.  It should be cleaned
+-   * up later. */
+-  if (conn->server->consec_failures > 0) {
++  /* Don't hand new queries to a connection that has been retired (e.g. it saw
++   * a timeout).  It keeps servicing its in-flight queries and is cleaned up
++   * once idle.  Note this is a per-connection check: a server-wide failure
++   * counter must not be used here or a single transient failure would evict
++   * every (including healthy) connection to the server and spawn a new socket
++   * per query. */
++  if (conn->flags & ARES_CONN_FLAG_NONEW) {
+     return NULL;
+   }
+ 
+@@ -1262,8 +1367,44 @@ static ares_status_t ares_conn_query_write(ares_conn_t          *conn,
+   return ares_conn_flush(conn);
+ }
+ 
++/* Public entrypoint.  Establishes a requeue list and drives
++ * ares_send_query_int() plus any retries/deferred callbacks it produces
++ * iteratively, so a chain of retryable failures can never recurse until the
++ * stack is exhausted (#1043). */
+ ares_status_t ares_send_query(ares_server_t *requested_server,
+                               ares_query_t *query, const ares_timeval_t *now)
++{
++  ares_channel_t *channel = query->channel;
++  ares_array_t   *requeue = NULL;
++  unsigned short  qid     = query->qid;
++  ares_status_t   status;
++
++  status = ares_send_query_int(requested_server, query, now, &requeue);
++
++  /* Drain any retries/deferred callbacks this send produced.
++   * ares_flush_requeue() always fully processes and destroys the list (even on
++   * ENOMEM), and sends the empty-queue notification if needed. */
++  if (ares_flush_requeue(channel, now, &requeue) == ARES_ENOMEM) {
++    status = ARES_ENOMEM;
++  }
++
++  /* A retry may have been deferred (returning ARES_SUCCESS from the append)
++   * and then terminally failed while draining, in which case the query has
++   * been freed.  Do not dereference 'query' here.  If it is no longer tracked
++   * it ended, so don't report success to the caller (which would, e.g., cause
++   * ares_send_nolock() to write to a now-freed *qid). */
++  if (status == ARES_SUCCESS &&
++      ares_htable_szvp_get_direct(channel->queries_by_qid, qid) == NULL) {
++    status = ARES_ETIMEOUT;
++  }
++
++  return status;
++}
++
++static ares_status_t ares_send_query_int(ares_server_t        *requested_server,
++                                         ares_query_t         *query,
++                                         const ares_timeval_t *now,
++                                         ares_array_t        **requeue)
+ {
+   ares_channel_t *channel = query->channel;
+   ares_server_t  *server;
+@@ -1286,14 +1427,16 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+   }
+ 
+   if (server == NULL) {
+-    end_query(channel, server, query, ARES_ENOSERVER /* ? */, NULL, NULL);
++    end_query(channel, server, query, ARES_ENOSERVER /* ? */, NULL, requeue);
+     return ARES_ENOSERVER;
+   }
+ 
+-  /* If a query is directed to a specific query, or the server chosen has
+-   * failures, or the query is being retried, don't probe for downed servers */
+-  if (requested_server != NULL || server->consec_failures > 0 ||
+-      query->try_count != 0) {
++  /* If a query is directed to a specific server, or the query is being
++   * retried, don't probe for downed servers.  Note that the chosen server
++   * having failures itself does NOT disable probing: when every server has
++   * failures (e.g. during an extended outage), probes are the only way a
++   * recovered server that sorts behind the current best can be noticed. */
++  if (requested_server != NULL || query->try_count != 0) {
+     probe_downed_server = ARES_FALSE;
+   }
+ 
+@@ -1310,11 +1453,11 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+       case ARES_ECONNREFUSED:
+       case ARES_EBADFAMILY:
+         server_increment_failures(server, query->using_tcp);
+-        return ares_requeue_query(query, now, status, ARES_TRUE, NULL, NULL);
++        return ares_requeue_query(query, now, status, ARES_TRUE, NULL, requeue);
+ 
+       /* Anything else is not retryable, likely ENOMEM */
+       default:
+-        end_query(channel, server, query, status, NULL, NULL);
++        end_query(channel, server, query, status, NULL, requeue);
+         return status;
+     }
+   }
+@@ -1328,7 +1471,7 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+ 
+     case ARES_ENOMEM:
+       /* Not retryable */
+-      end_query(channel, server, query, status, NULL, NULL);
++      end_query(channel, server, query, status, NULL, requeue);
+       return status;
+ 
+     /* These conditions are retryable as they are server-specific
+@@ -1336,7 +1479,7 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+     case ARES_ECONNREFUSED:
+     case ARES_EBADFAMILY:
+       handle_conn_error(conn, ARES_TRUE, status);
+-      status = ares_requeue_query(query, now, status, ARES_TRUE, NULL, NULL);
++      status = ares_requeue_query(query, now, status, ARES_TRUE, NULL, requeue);
+       if (status == ARES_ETIMEOUT) {
+         status = ARES_ECONNREFUSED;
+       }
+@@ -1344,7 +1487,7 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+ 
+     default:
+       server_increment_failures(server, query->using_tcp);
+-      status = ares_requeue_query(query, now, status, ARES_TRUE, NULL, NULL);
++      status = ares_requeue_query(query, now, status, ARES_TRUE, NULL, requeue);
+       return status;
+   }
+ 
+@@ -1355,12 +1498,12 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+   ares_slist_node_destroy(query->node_queries_by_timeout);
+   query->ts      = *now;
+   query->timeout = *now;
+-  timeadd(&query->timeout, timeplus);
++  ares_timeval_add(&query->timeout, timeplus);
+   query->node_queries_by_timeout =
+     ares_slist_insert(channel->queries_by_timeout, query);
+   if (!query->node_queries_by_timeout) {
+     /* LCOV_EXCL_START: OutOfMemory */
+-    end_query(channel, server, query, ARES_ENOMEM, NULL, NULL);
++    end_query(channel, server, query, ARES_ENOMEM, NULL, requeue);
+     return ARES_ENOMEM;
+     /* LCOV_EXCL_STOP */
+   }
+@@ -1373,7 +1516,7 @@ ares_status_t ares_send_query(ares_server_t *requested_server,
+ 
+   if (query->node_queries_to_conn == NULL) {
+     /* LCOV_EXCL_START: OutOfMemory */
+-    end_query(channel, server, query, ARES_ENOMEM, NULL, NULL);
++    end_query(channel, server, query, ARES_ENOMEM, NULL, requeue);
+     return ARES_ENOMEM;
+     /* LCOV_EXCL_STOP */
+   }
+diff --git a/deps/cares/src/lib/ares_qcache.c b/deps/cares/src/lib/ares_qcache.c
+index 4050ff54bf..ad3bc83505 100644
+--- a/deps/cares/src/lib/ares_qcache.c
++++ b/deps/cares/src/lib/ares_qcache.c
+@@ -371,9 +371,11 @@ static ares_status_t ares_qcache_insert_int(ares_qcache_t           *qcache,
+ 
+ /* LCOV_EXCL_START: OutOfMemory */
+ fail:
+-  if (entry != NULL && entry->key != NULL) {
+-    ares_htable_strvp_remove(qcache->cache, entry->key);
+-    ares_free(entry->key);
++  if (entry != NULL) {
++    if (entry->key != NULL) {
++      ares_htable_strvp_remove(qcache->cache, entry->key);
++      ares_free(entry->key);
++    }
+     ares_free(entry);
+   }
+   return ARES_ENOMEM;
+diff --git a/deps/cares/src/lib/ares_socket.c b/deps/cares/src/lib/ares_socket.c
+index 516852a84a..4ad3034021 100644
+--- a/deps/cares/src/lib/ares_socket.c
++++ b/deps/cares/src/lib/ares_socket.c
+@@ -188,6 +188,8 @@ ares_conn_err_t ares_socket_recvfrom(ares_channel_t *channel, ares_socket_t s,
+ {
+   ares_ssize_t rv;
+ 
++  *read_bytes = 0;
++
+   rv = channel->sock_funcs.arecvfrom(s, data, data_len, flags, from, from_len,
+                                      channel->sock_func_cb_data);
+ 
+diff --git a/deps/cares/src/lib/ares_sysconfig.c b/deps/cares/src/lib/ares_sysconfig.c
+index 286db60328..9e389c1767 100644
+--- a/deps/cares/src/lib/ares_sysconfig.c
++++ b/deps/cares/src/lib/ares_sysconfig.c
+@@ -218,13 +218,16 @@ static ares_status_t ares_init_sysconfig_android(const ares_channel_t *channel,
+       status = ares_sconfig_append_fromstr(channel, &sysconfig->sconfig,
+                                            dns_servers[i], ARES_TRUE);
+       if (status != ARES_SUCCESS) {
+-        return status;
++        break;
+       }
+     }
+     for (i = 0; i < num_servers; i++) {
+       ares_free(dns_servers[i]);
+     }
+     ares_free(dns_servers);
++    if (status != ARES_SUCCESS) {
++      return status;
++    }
+   }
+ 
+   domains            = ares_get_android_search_domains_list();
+@@ -273,7 +276,7 @@ static ares_status_t
+    *   3. if confstr(_CS_DOMAIN, ...) this is the domain name.  Use this as
+    *      preference over anything else found.
+    */
+-  ares_buf_t    *buf                = ares_buf_create();
++  ares_buf_t    *buf                = NULL;
+   unsigned char *data               = NULL;
+   size_t         data_size          = 0;
+   ares_bool_t    process_resolvconf = ARES_TRUE;
+@@ -330,7 +333,7 @@ static ares_status_t
+     char   domain[256];
+     size_t domain_len;
+ 
+-    domain_len = confstr(_CS_DOMAIN, domain, sizeof(domain_len));
++    domain_len = confstr(_CS_DOMAIN, domain, sizeof(domain));
+     if (domain_len != 0) {
+       ares_strsplit_free(sysconfig->domains, sysconfig->ndomains);
+       sysconfig->domains = ares_strsplit(domain, ", ", &sysconfig->ndomains);
+diff --git a/deps/cares/src/lib/ares_sysconfig_files.c b/deps/cares/src/lib/ares_sysconfig_files.c
+index a6c2a8e62b..2caa3b2000 100644
+--- a/deps/cares/src/lib/ares_sysconfig_files.c
++++ b/deps/cares/src/lib/ares_sysconfig_files.c
+@@ -27,6 +27,8 @@
+ 
+ #include "ares_private.h"
+ 
++#include <limits.h>
++
+ #ifdef HAVE_SYS_PARAM_H
+ #  include <sys/param.h>
+ #endif
+@@ -170,8 +172,8 @@ static ares_status_t parse_sort(ares_buf_t *buf, struct apattern *pat)
+ 
+     if (ares_str_isnum(maskstr)) {
+       /* Numeric mask */
+-      int mask = atoi(maskstr);
+-      if (mask < 0 || mask > 128) {
++      unsigned int mask;
++      if (!ares_str_parse_uint(maskstr, 128, &mask)) {
+         return ARES_EBADSTR;
+       }
+       if (pat->addr.family == AF_INET && mask > 32) {
+@@ -340,12 +342,17 @@ static ares_status_t config_lookup(ares_sysconfig_t *sysconfig, ares_buf_t *buf,
+     const char *value = lookups[i];
+     char        ch;
+ 
++    /* AIX /etc/netsvc.conf uses address-family-suffixed tokens such as
++     * "bind4"/"bind6" and "local4"/"local6" in addition to the bare forms. */
+     if (ares_strcaseeq(value, "dns") || ares_strcaseeq(value, "bind") ||
++        ares_strcaseeq(value, "bind4") || ares_strcaseeq(value, "bind6") ||
+         ares_strcaseeq(value, "resolv") || ares_strcaseeq(value, "resolve")) {
+       ch = 'b';
+     } else if (ares_strcaseeq(value, "files") ||
+                ares_strcaseeq(value, "file") ||
+-               ares_strcaseeq(value, "local")) {
++               ares_strcaseeq(value, "local") ||
++               ares_strcaseeq(value, "local4") ||
++               ares_strcaseeq(value, "local6")) {
+       ch = 'f';
+     } else {
+       continue;
+@@ -401,20 +408,25 @@ static ares_status_t process_option(ares_sysconfig_t *sysconfig,
+ 
+   key = kv[0];
+   if (num == 2) {
+-    val    = kv[1];
+-    valint = (unsigned int)strtoul(val, NULL, 10);
++    val = kv[1];
++    if (!ares_str_parse_uint(val, UINT_MAX, &valint)) {
++      status = ARES_EBADSTR;
++      goto done;
++    }
+   }
+ 
+   if (ares_streq(key, "ndots")) {
+     sysconfig->ndots = valint;
+   } else if (ares_streq(key, "retrans") || ares_streq(key, "timeout")) {
+     if (valint == 0) {
+-      return ARES_EFORMERR;
++      status = ARES_EFORMERR;
++      goto done;
+     }
+     sysconfig->timeout_ms = valint * 1000;
+   } else if (ares_streq(key, "retry") || ares_streq(key, "attempts")) {
+     if (valint == 0) {
+-      return ARES_EFORMERR;
++      status = ARES_EFORMERR;
++      goto done;
+     }
+     sysconfig->tries = valint;
+   } else if (ares_streq(key, "rotate")) {
+diff --git a/deps/cares/src/lib/ares_sysconfig_win.c b/deps/cares/src/lib/ares_sysconfig_win.c
+index 94a3817de3..e0daf1103e 100644
+--- a/deps/cares/src/lib/ares_sysconfig_win.c
++++ b/deps/cares/src/lib/ares_sysconfig_win.c
+@@ -114,56 +114,69 @@ static ares_bool_t get_REG_SZ(HKEY hKey, const WCHAR *leafKeyName, char **outptr
+   /* Convert to UTF8 */
+   len = WideCharToMultiByte(CP_UTF8, 0, val, -1, NULL, 0, NULL, NULL);
+   if (len == 0) {
++    ares_free(val);
+     return ARES_FALSE;
+   }
+   *outptr = ares_malloc_zero((size_t)len + 1);
++  if (*outptr == NULL) {
++    ares_free(val);
++    return ARES_FALSE;
++  }
+   if (WideCharToMultiByte(CP_UTF8, 0, val, -1, *outptr, len, NULL, NULL)
+     == 0) {
+     ares_free(*outptr);
+     *outptr = NULL;
++    ares_free(val);
+     return ARES_FALSE;
+   }
+ 
++  ares_free(val);
+   return ARES_TRUE;
+ }
+ 
+-static void commanjoin(char **dst, const char * const src, const size_t len)
++static ares_status_t sysconfig_commajoin(ares_buf_t *buf, const char *src,
++                                         ares_bool_t asciionly)
+ {
+-  char  *newbuf;
+-  size_t newsize;
++  ares_status_t status;
+ 
+-  /* 1 for terminating 0 and 2 for , and terminating 0 */
+-  newsize = len + (*dst ? (ares_strlen(*dst) + 2) : 1);
+-  newbuf  = ares_realloc(*dst, newsize);
+-  if (!newbuf) {
+-    return;
++  if (buf == NULL) {
++    return ARES_ENOMEM;
+   }
+-  if (*dst == NULL) {
+-    *newbuf = '\0';
++
++  if (src == NULL || *src == '\0') {
++    return ARES_SUCCESS;
+   }
+-  *dst = newbuf;
+-  if (ares_strlen(*dst) != 0) {
+-    strcat(*dst, ",");
++
++  if (asciionly && !ares_str_isprint(src, ares_strlen(src))) {
++    return ARES_SUCCESS;
+   }
+-  strncat(*dst, src, len);
+-}
+ 
+-/*
+- * commajoin()
+- *
+- * RTF code.
+- */
+-static void commajoin(char **dst, const char *src)
+-{
+-  commanjoin(dst, src, ares_strlen(src));
++  if (ares_buf_len(buf) > 0) {
++    status = ares_buf_append_byte(buf, ',');
++    if (status != ARES_SUCCESS) {
++      return status;
++    }
++  }
++
++  return ares_buf_append_str(buf, src);
+ }
+ 
+-static void commajoin_asciionly(char **dst, const char *src)
++/* Read a REG_SZ value and comma-append it (ASCII-only) to *buf.
++ * On allocation failure, destroys *buf and sets it to NULL. */
++static void reg_commajoin(ares_buf_t **buf, HKEY key, const WCHAR *leaf)
+ {
+-  if (!ares_str_isprint(src, ares_strlen(src))) {
++  char *p = NULL;
++
++  if (*buf == NULL || !get_REG_SZ(key, leaf, &p)) {
+     return;
+   }
+-  commanjoin(dst, src, ares_strlen(src));
++
++  if (sysconfig_commajoin(*buf, p, ARES_TRUE) != ARES_SUCCESS) {
++    ares_buf_destroy(*buf);
++    *buf = NULL;
++  }
++
++  ares_free(p);
+ }
+ 
+ /* A structure to hold the string form of IPv4 and IPv6 addresses so we can
+@@ -494,8 +507,10 @@ static ares_bool_t get_DNS_Windows(char **outptr)
+ 
+   /* Join them all into a single string, removing duplicates. */
+   {
+-    size_t i;
+-    for (i = 0; i < addressesIndex; ++i) {
++    size_t      i;
++    ares_buf_t *buf = ares_buf_create();
++
++    for (i = 0; buf != NULL && i < addressesIndex; ++i) {
+       size_t j;
+       /* Look for this address text appearing previously in the results. */
+       for (j = 0; j < i; ++j) {
+@@ -505,10 +520,22 @@ static ares_bool_t get_DNS_Windows(char **outptr)
+       }
+       /* Iff we didn't emit this address already, emit it now. */
+       if (j == i) {
+-        /* Add that to outptr (if we can). */
+-        commajoin(outptr, addresses[i].text);
++        /* Add that to buf (if we can). */
++        if (sysconfig_commajoin(buf, addresses[i].text, ARES_FALSE) !=
++            ARES_SUCCESS) {
++          ares_buf_destroy(buf);
++          buf = NULL;
++          break;
++        }
+       }
+     }
++
++    if (buf != NULL && ares_buf_len(buf) == 0) {
++      ares_buf_destroy(buf);
++      buf = NULL;
++    }
++
++    *outptr = ares_buf_finish_str(buf, NULL);
+   }
+ 
+ done:
+@@ -540,51 +567,46 @@ done:
+  */
+ static ares_bool_t get_SuffixList_Windows(char **outptr)
+ {
+-  HKEY  hKey;
+-  HKEY  hKeyEnum;
+-  char  keyName[256];
+-  DWORD keyNameBuffSize;
+-  DWORD keyIdx = 0;
+-  char *p      = NULL;
++  HKEY        hKey;
++  HKEY        hKeyEnum;
++  char        keyName[256];
++  DWORD       keyNameBuffSize;
++  DWORD       keyIdx = 0;
++  ares_buf_t *buf    = ares_buf_create();
+ 
+   *outptr = NULL;
+ 
++  if (buf == NULL) {
++    return ARES_FALSE;
++  }
++
+   /* 1. Global DNS Suffix Search List */
+   if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_NS_NT_KEY, 0, KEY_READ, &hKey) ==
+       ERROR_SUCCESS) {
+-    get_REG_SZ(hKey, SEARCHLIST_KEY, outptr);
+-    if (get_REG_SZ(hKey, DOMAIN_KEY, &p)) {
+-      commajoin_asciionly(outptr, p);
+-      ares_free(p);
+-      p = NULL;
+-    }
++    reg_commajoin(&buf, hKey, SEARCHLIST_KEY);
++    reg_commajoin(&buf, hKey, DOMAIN_KEY);
+     RegCloseKey(hKey);
+   }
+ 
+-  if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_NT_DNSCLIENT, 0, KEY_READ, &hKey) ==
+-      ERROR_SUCCESS) {
+-    if (get_REG_SZ(hKey, SEARCHLIST_KEY, &p)) {
+-      commajoin_asciionly(outptr, p);
+-      ares_free(p);
+-      p = NULL;
+-    }
++  if (buf != NULL &&
++      RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_NT_DNSCLIENT, 0, KEY_READ, &hKey) ==
++        ERROR_SUCCESS) {
++    reg_commajoin(&buf, hKey, SEARCHLIST_KEY);
+     RegCloseKey(hKey);
+   }
+ 
+   /* 2. Connection Specific Search List composed of:
+    *  a. Primary DNS Suffix */
+-  if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_DNSCLIENT, 0, KEY_READ, &hKey) ==
+-      ERROR_SUCCESS) {
+-    if (get_REG_SZ(hKey, PRIMARYDNSSUFFIX_KEY, &p)) {
+-      commajoin_asciionly(outptr, p);
+-      ares_free(p);
+-      p = NULL;
+-    }
++  if (buf != NULL &&
++      RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_DNSCLIENT, 0, KEY_READ, &hKey) ==
++        ERROR_SUCCESS) {
++    reg_commajoin(&buf, hKey, PRIMARYDNSSUFFIX_KEY);
+     RegCloseKey(hKey);
+   }
+ 
+   /*  b. Interface SearchList, Domain, DhcpDomain */
+-  if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_NS_NT_KEY "\\" INTERFACES_KEY, 0,
++  if (buf != NULL &&
++      RegOpenKeyExA(HKEY_LOCAL_MACHINE, WIN_NS_NT_KEY "\\" INTERFACES_KEY, 0,
+                     KEY_READ, &hKey) == ERROR_SUCCESS) {
+     for (;;) {
+       keyNameBuffSize = sizeof(keyName);
+@@ -596,27 +618,26 @@ static ares_bool_t get_SuffixList_Windows(char **outptr)
+           ERROR_SUCCESS) {
+         continue;
+       }
+-      /* p can be comma separated (SearchList) */
+-      if (get_REG_SZ(hKeyEnum, SEARCHLIST_KEY, &p)) {
+-        commajoin_asciionly(outptr, p);
+-        ares_free(p);
+-        p = NULL;
+-      }
+-      if (get_REG_SZ(hKeyEnum, DOMAIN_KEY, &p)) {
+-        commajoin_asciionly(outptr, p);
+-        ares_free(p);
+-        p = NULL;
+-      }
+-      if (get_REG_SZ(hKeyEnum, DHCPDOMAIN_KEY, &p)) {
+-        commajoin_asciionly(outptr, p);
+-        ares_free(p);
+-        p = NULL;
+-      }
++      /* SearchList can be comma separated */
++      reg_commajoin(&buf, hKeyEnum, SEARCHLIST_KEY);
++      reg_commajoin(&buf, hKeyEnum, DOMAIN_KEY);
++      reg_commajoin(&buf, hKeyEnum, DHCPDOMAIN_KEY);
+       RegCloseKey(hKeyEnum);
++
++      if (buf == NULL) {
++        break;
++      }
+     }
+     RegCloseKey(hKey);
+   }
+ 
++  if (ares_buf_len(buf) == 0) {
++    ares_buf_destroy(buf);
++    buf = NULL;
++  }
++
++  *outptr = ares_buf_finish_str(buf, NULL);
++
+   return *outptr != NULL ? ARES_TRUE : ARES_FALSE;
+ }
+ 
+diff --git a/deps/cares/src/lib/ares_timeout.c b/deps/cares/src/lib/ares_timeout.c
+index 0d2fdcff21..dbd5cf443d 100644
+--- a/deps/cares/src/lib/ares_timeout.c
++++ b/deps/cares/src/lib/ares_timeout.c
+@@ -32,6 +32,17 @@
+ #endif
+ 
+ 
++void ares_timeval_add(ares_timeval_t *now, size_t millisecs)
++{
++  now->sec  += (ares_int64_t)millisecs / 1000;
++  now->usec += (unsigned int)((millisecs % 1000) * 1000);
++
++  if (now->usec >= 1000000) {
++    now->sec  += now->usec / 1000000;
++    now->usec %= 1000000;
++  }
++}
++
+ void ares_timeval_remaining(ares_timeval_t       *remaining,
+                             const ares_timeval_t *now,
+                             const ares_timeval_t *tout)
+diff --git a/deps/cares/src/lib/ares_update_servers.c b/deps/cares/src/lib/ares_update_servers.c
+index 70a9381499..f8d441accf 100644
+--- a/deps/cares/src/lib/ares_update_servers.c
++++ b/deps/cares/src/lib/ares_update_servers.c
+@@ -27,6 +27,8 @@
+  */
+ #include "ares_private.h"
+ 
++#include <limits.h>
++
+ #ifdef HAVE_ARPA_INET_H
+ #  include <arpa/inet.h>
+ #endif
+@@ -234,7 +236,10 @@ static ares_status_t parse_nameserver_uri(ares_buf_t     *buf,
+   sconfig->tcp_port = sconfig->udp_port;
+   port              = ares_uri_get_query_key(uri, "tcpport");
+   if (port != NULL) {
+-    sconfig->tcp_port = (unsigned short)atoi(port);
++    if (!ares_parse_port(port, &sconfig->tcp_port, ARES_TRUE)) {
++      status = ARES_EBADSTR;
++      goto done;
++    }
+   }
+ 
+ done:
+@@ -352,7 +357,9 @@ static ares_status_t parse_nameserver(ares_buf_t *buf, ares_sconfig_t *sconfig)
+       return status;
+     }
+ 
+-    sconfig->udp_port = (unsigned short)atoi(portstr);
++    if (!ares_parse_port(portstr, &sconfig->udp_port, ARES_TRUE)) {
++      return ARES_EBADSTR;
++    }
+     sconfig->tcp_port = sconfig->udp_port;
+   }
+ 
+@@ -398,7 +405,13 @@ static ares_status_t ares_sconfig_linklocal(const ares_channel_t *channel,
+ 
+   if (ares_str_isnum(ll_iface)) {
+     char ifname[IF_NAMESIZE] = "";
+-    ll_scope                 = (unsigned int)atoi(ll_iface);
++
++    /* The interface identifier is all digits but may not fit in an
++     * unsigned int; parse with the range-checked helper rather than atoi(),
++     * whose behavior on overflow is undefined. */
++    if (!ares_str_parse_uint(ll_iface, UINT_MAX, &ll_scope)) {
++      return ARES_ENOTFOUND;
++    }
+     if (channel->sock_funcs.aif_indextoname == NULL ||
+         channel->sock_funcs.aif_indextoname(ll_scope, ifname, sizeof(ifname),
+                                             channel->sock_func_cb_data) ==
+@@ -967,7 +980,8 @@ ares_status_t ares_in_addr_to_sconfig_llist(const struct in_addr *servers,
+            sizeof(sconfig->addr.addr.addr4));
+ 
+     if (ares_llist_insert_last(s, sconfig) == NULL) {
+-      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++      ares_free(sconfig); /* LCOV_EXCL_LINE: OutOfMemory */
++      goto fail;          /* LCOV_EXCL_LINE: OutOfMemory */
+     }
+   }
+ 
+diff --git a/deps/cares/src/lib/dsa/ares_array.c b/deps/cares/src/lib/dsa/ares_array.c
+index c421d5c5f6..e6bce6e41d 100644
+--- a/deps/cares/src/lib/dsa/ares_array.c
++++ b/deps/cares/src/lib/dsa/ares_array.c
+@@ -171,14 +171,19 @@ void *ares_array_finish(ares_array_t *arr, size_t *num_members)
+ 
+ ares_status_t ares_array_set_size(ares_array_t *arr, size_t size)
+ {
+-  void *temp;
++  void  *temp;
++  size_t rounded_size;
+ 
+   if (arr == NULL || size == 0 || size < arr->cnt) {
+     return ARES_EFORMERR;
+   }
+ 
+   /* Always operate on powers of 2 */
+-  size = ares_round_up_pow2(size);
++  rounded_size = ares_round_up_pow2(size);
++  if (rounded_size < size) {
++    return ARES_ENOMEM; /* rounding wrapped around */
++  }
++  size = rounded_size;
+ 
+   if (size < ARES__ARRAY_MIN) {
+     size = ARES__ARRAY_MIN;
+@@ -189,8 +194,8 @@ ares_status_t ares_array_set_size(ares_array_t *arr, size_t size)
+     return ARES_SUCCESS;
+   }
+ 
+-  temp = ares_realloc_zero(arr->arr, arr->alloc_cnt * arr->member_size,
+-                           size * arr->member_size);
++  temp =
++    ares_realloc_zero_array(arr->arr, arr->alloc_cnt, size, arr->member_size);
+   if (temp == NULL) {
+     return ARES_ENOMEM;
+   }
+@@ -295,7 +300,7 @@ ares_status_t ares_array_insertdata_first(ares_array_t *arr,
+   ares_status_t status;
+   void         *ptr = NULL;
+ 
+-  status = ares_array_insert_last(&ptr, arr);
++  status = ares_array_insert_first(&ptr, arr);
+   if (status != ARES_SUCCESS) {
+     return status;
+   }
+@@ -362,6 +367,16 @@ ares_status_t ares_array_claim_at(void *dest, size_t dest_size,
+   }
+ 
+   arr->cnt--;
++
++  /* When empty, reset offset so a later insert doesn't compact from an
++   * out-of-range index (offset can reach alloc_cnt after front claims).
++   * This also protects ares_array_finish(), which has the same
++   * move(0, offset) and would otherwise fail on an offset == alloc_cnt
++   * array. */
++  if (arr->cnt == 0) {
++    arr->offset = 0;
++  }
++
+   return ARES_SUCCESS;
+ }
+ 
+diff --git a/deps/cares/src/lib/dsa/ares_htable.c b/deps/cares/src/lib/dsa/ares_htable.c
+index f76b67cae9..d6ac7a065a 100644
+--- a/deps/cares/src/lib/dsa/ares_htable.c
++++ b/deps/cares/src/lib/dsa/ares_htable.c
+@@ -150,6 +150,10 @@ const void **ares_htable_all_buckets(const ares_htable_t *htable, size_t *num)
+ 
+   *num = 0;
+ 
++  if (htable->num_keys == 0) {
++    return NULL;
++  }
++
+   out = ares_malloc_zero(sizeof(*out) * htable->num_keys);
+   if (out == NULL) {
+     return NULL; /* LCOV_EXCL_LINE */
+@@ -172,7 +176,7 @@ const void **ares_htable_all_buckets(const ares_htable_t *htable, size_t *num)
+  *  We are doing "hash & (size - 1)" since we are guaranteeing a power of
+  *  2 for size. This is equivalent to "hash % size", but should be more
+  * efficient */
+-#define HASH_IDX(h, key) h->hash(key, h->seed) & (h->size - 1)
++#define HASH_IDX(h, key) ((h)->hash((key), (h)->seed) & ((h)->size - 1))
+ 
+ static ares_llist_node_t *ares_htable_find(const ares_htable_t *htable,
+                                            unsigned int idx, const void *key)
+diff --git a/deps/cares/src/lib/dsa/ares_htable_dict.c b/deps/cares/src/lib/dsa/ares_htable_dict.c
+index 93d7a20137..cda7a49c79 100644
+--- a/deps/cares/src/lib/dsa/ares_htable_dict.c
++++ b/deps/cares/src/lib/dsa/ares_htable_dict.c
+@@ -132,6 +132,7 @@ ares_bool_t ares_htable_dict_insert(ares_htable_dict_t *htable, const char *key,
+ 
+ fail:
+   if (bucket) {
++    ares_free(bucket->key);
+     ares_free(bucket->val);
+     ares_free(bucket);
+   }
+@@ -223,6 +224,7 @@ char **ares_htable_dict_keys(const ares_htable_dict_t *htable, size_t *num)
+ 
+ fail:
+   *num = 0;
++  ares_free(buckets);
+   ares_free_array(out, cnt, ares_free);
+   return NULL;
+ }
+diff --git a/deps/cares/src/lib/dsa/ares_llist.c b/deps/cares/src/lib/dsa/ares_llist.c
+index 6bd7de269a..ce1a311494 100644
+--- a/deps/cares/src/lib/dsa/ares_llist.c
++++ b/deps/cares/src/lib/dsa/ares_llist.c
+@@ -103,7 +103,10 @@ static void ares_llist_attach_at(ares_llist_t            *list,
+     case ARES__LLIST_INSERT_BEFORE:
+       node->next = at;
+       node->prev = at->prev;
+-      at->prev   = node;
++      if (at->prev) {
++        at->prev->next = node;
++      }
++      at->prev = node;
+       break;
+   }
+   if (list->tail == NULL) {
+diff --git a/deps/cares/src/lib/event/ares_event_configchg.c b/deps/cares/src/lib/event/ares_event_configchg.c
+index add729574e..d73c486205 100644
+--- a/deps/cares/src/lib/event/ares_event_configchg.c
++++ b/deps/cares/src/lib/event/ares_event_configchg.c
+@@ -207,12 +207,14 @@ void ares_event_configchg_destroy(ares_event_configchg_t *configchg)
+ 
+ #  ifdef HAVE_REGISTERWAITFORSINGLEOBJECT
+   if (configchg->regip4_wait != NULL) {
+-    UnregisterWait(configchg->regip4_wait);
++    /* Use INVALID_HANDLE_VALUE to wait for any running callback to complete
++     * before returning, preventing use-after-free of configchg */
++    UnregisterWaitEx(configchg->regip4_wait, INVALID_HANDLE_VALUE);
+     configchg->regip4_wait = NULL;
+   }
+ 
+   if (configchg->regip6_wait != NULL) {
+-    UnregisterWait(configchg->regip6_wait);
++    UnregisterWaitEx(configchg->regip6_wait, INVALID_HANDLE_VALUE);
+     configchg->regip6_wait = NULL;
+   }
+ 
+diff --git a/deps/cares/src/lib/event/ares_event_wake_pipe.c b/deps/cares/src/lib/event/ares_event_wake_pipe.c
+index cd1534bbbd..2ea72c2941 100644
+--- a/deps/cares/src/lib/event/ares_event_wake_pipe.c
++++ b/deps/cares/src/lib/event/ares_event_wake_pipe.c
+@@ -117,7 +117,13 @@ static void ares_pipeevent_signal(const ares_event_t *e)
+   }
+ 
+   p = e->data;
+-  (void)write(p->filedes[1], "1", 1);
++  /* Best-effort wakeup.  A failed or short write is harmless: it can only
++   * happen when the pipe buffer is already full, which means a wakeup is
++   * already pending.  The result is consumed to satisfy warn_unused_result
++   * (a plain (void) cast does not silence it under _FORTIFY_SOURCE). */
++  if (write(p->filedes[1], "1", 1) < 0) {
++    return;
++  }
+ }
+ 
+ static void ares_pipeevent_cb(ares_event_thread_t *e, ares_socket_t fd,
+diff --git a/deps/cares/src/lib/event/ares_event_win32.c b/deps/cares/src/lib/event/ares_event_win32.c
+index d7d1d65735..d558b6930a 100644
+--- a/deps/cares/src/lib/event/ares_event_win32.c
++++ b/deps/cares/src/lib/event/ares_event_win32.c
+@@ -707,6 +707,9 @@ static ares_bool_t ares_evsys_win32_event_add(ares_event_t *event)
+   ares_bool_t                   rc = ARES_FALSE;
+ 
+   ed              = ares_malloc_zero(sizeof(*ed));
++  if (ed == NULL) {
++    return ARES_FALSE; /* LCOV_EXCL_LINE: OutOfMemory */
++  }
+   ed->event       = event;
+   ed->socket      = event->fd;
+   ed->base_socket = ARES_SOCKET_BAD;
+diff --git a/deps/cares/src/lib/include/ares_mem.h b/deps/cares/src/lib/include/ares_mem.h
+index 371cd4266d..d980923e58 100644
+--- a/deps/cares/src/lib/include/ares_mem.h
++++ b/deps/cares/src/lib/include/ares_mem.h
+@@ -34,5 +34,8 @@ CARES_EXTERN void  ares_free(void *ptr);
+ CARES_EXTERN void *ares_malloc_zero(size_t size);
+ CARES_EXTERN void *ares_realloc_zero(void *ptr, size_t orig_size,
+                                      size_t new_size);
++CARES_EXTERN void *ares_malloc_zero_array(size_t num, size_t size);
++CARES_EXTERN void *ares_realloc_zero_array(void *ptr, size_t orig_num,
++                                           size_t new_num, size_t size);
+ 
+ #endif
+diff --git a/deps/cares/src/lib/include/ares_str.h b/deps/cares/src/lib/include/ares_str.h
+index 4ee339510b..c7fdf4fc4c 100644
+--- a/deps/cares/src/lib/include/ares_str.h
++++ b/deps/cares/src/lib/include/ares_str.h
+@@ -60,6 +60,23 @@ CARES_EXTERN size_t ares_strcpy(char *dest, const char *src, size_t dest_size);
+ CARES_EXTERN ares_bool_t    ares_str_isnum(const char *str);
+ CARES_EXTERN ares_bool_t    ares_str_isalnum(const char *str);
+ 
++/*! Parse a base-10 unsigned integer from a NULL-terminated string.  Unlike
++ *  atoi(), this rejects overflow, leading or trailing garbage (a sign,
++ *  whitespace, or non-digit characters), and any value that does not fit
++ *  within the caller-provided maximum.
++ *
++ *  \param[in]  str  String to parse.  May be NULL or empty, in which case
++ *                   ARES_FALSE is returned.
++ *  \param[in]  max  Largest value considered valid.  Values above UINT_MAX
++ *                   are capped to UINT_MAX since out is an unsigned int.
++ *  \param[out] out  On success, receives the parsed value.  Untouched on
++ *                   failure.
++ *  \return ARES_TRUE if a valid in-range integer was parsed, ARES_FALSE
++ *          otherwise.
++ */
++CARES_EXTERN ares_bool_t ares_str_parse_uint(const char *str, unsigned long max,
++                                             unsigned int *out);
++
+ CARES_EXTERN void           ares_str_ltrim(char *str);
+ CARES_EXTERN void           ares_str_rtrim(char *str);
+ CARES_EXTERN void           ares_str_trim(char *str);
+diff --git a/deps/cares/src/lib/legacy/ares_expand_name.c b/deps/cares/src/lib/legacy/ares_expand_name.c
+index 72668f4cb6..ee1d70076b 100644
+--- a/deps/cares/src/lib/legacy/ares_expand_name.c
++++ b/deps/cares/src/lib/legacy/ares_expand_name.c
+@@ -69,7 +69,7 @@ ares_status_t ares_expand_name_validated(const unsigned char *encoded,
+   }
+ 
+   start_len = ares_buf_len(buf);
+-  status    = ares_dns_name_parse(buf, s, is_hostname);
++  status    = ares_dns_name_parse(buf, s, is_hostname, ARES_TRUE);
+   if (status != ARES_SUCCESS) {
+     goto done;
+   }
+diff --git a/deps/cares/src/lib/legacy/ares_parse_ns_reply.c b/deps/cares/src/lib/legacy/ares_parse_ns_reply.c
+index fc9ab9219d..7013ce28b9 100644
+--- a/deps/cares/src/lib/legacy/ares_parse_ns_reply.c
++++ b/deps/cares/src/lib/legacy/ares_parse_ns_reply.c
+@@ -97,12 +97,12 @@ int ares_parse_ns_reply(const unsigned char *abuf, int alen_int,
+   }
+ 
+   /* Preallocate the maximum number + 1 */
+-  hostent->h_aliases = ares_malloc((ancount + 1) * sizeof(*hostent->h_aliases));
++  hostent->h_aliases =
++    ares_malloc_zero_array(ancount + 1, sizeof(*hostent->h_aliases));
+   if (hostent->h_aliases == NULL) {
+     status = ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+     goto done;            /* LCOV_EXCL_LINE: OutOfMemory */
+   }
+-  memset(hostent->h_aliases, 0, (ancount + 1) * sizeof(*hostent->h_aliases));
+ 
+   for (i = 0; i < ancount; i++) {
+     const ares_dns_rr_t *rr =
+diff --git a/deps/cares/src/lib/legacy/ares_parse_ptr_reply.c b/deps/cares/src/lib/legacy/ares_parse_ptr_reply.c
+index 0e52f9db09..a275f3802f 100644
+--- a/deps/cares/src/lib/legacy/ares_parse_ptr_reply.c
++++ b/deps/cares/src/lib/legacy/ares_parse_ptr_reply.c
+@@ -88,12 +88,12 @@ ares_status_t ares_parse_ptr_reply_dnsrec(const ares_dns_record_t *dnsrec,
+   hostent->h_length   = (HOSTENT_LENGTH_TYPE)addrlen;
+ 
+   /* Preallocate the maximum number + 1 */
+-  hostent->h_aliases = ares_malloc((ancount + 1) * sizeof(*hostent->h_aliases));
++  hostent->h_aliases =
++    ares_malloc_zero_array(ancount + 1, sizeof(*hostent->h_aliases));
+   if (hostent->h_aliases == NULL) {
+     status = ARES_ENOMEM;
+     goto done;
+   }
+-  memset(hostent->h_aliases, 0, (ancount + 1) * sizeof(*hostent->h_aliases));
+ 
+ 
+   /* Cycle through answers */
+diff --git a/deps/cares/src/lib/record/ares_dns_mapping.c b/deps/cares/src/lib/record/ares_dns_mapping.c
+index 5a3ec28abf..38dedd438c 100644
+--- a/deps/cares/src/lib/record/ares_dns_mapping.c
++++ b/deps/cares/src/lib/record/ares_dns_mapping.c
+@@ -147,7 +147,7 @@ ares_bool_t ares_dns_class_isvalid(ares_dns_class_t    qclass,
+   switch (qclass) {
+     case ARES_CLASS_IN:
+     case ARES_CLASS_CHAOS:
+-    case ARES_CLASS_HESOID:
++    case ARES_CLASS_HESIOD:
+     case ARES_CLASS_NONE:
+       return ARES_TRUE;
+     case ARES_CLASS_ANY:
+@@ -228,7 +228,7 @@ const char *ares_dns_rec_type_tostr(ares_dns_rec_type_t type)
+     case ARES_REC_TYPE_CAA:
+       return "CAA";
+     case ARES_REC_TYPE_RAW_RR:
+-      return "RAWRR";
++      return "RAW_RR";
+   }
+   return "UNKNOWN";
+ }
+@@ -240,7 +240,7 @@ const char *ares_dns_class_tostr(ares_dns_class_t qclass)
+       return "IN";
+     case ARES_CLASS_CHAOS:
+       return "CH";
+-    case ARES_CLASS_HESOID:
++    case ARES_CLASS_HESIOD:
+       return "HS";
+     case ARES_CLASS_ANY:
+       return "ANY";
+@@ -670,7 +670,7 @@ ares_bool_t ares_dns_class_fromstr(ares_dns_class_t *qclass, const char *str)
+   } list[] = {
+     { "IN",   ARES_CLASS_IN     },
+     { "CH",   ARES_CLASS_CHAOS  },
+-    { "HS",   ARES_CLASS_HESOID },
++    { "HS",   ARES_CLASS_HESIOD },
+     { "NONE", ARES_CLASS_NONE   },
+     { "ANY",  ARES_CLASS_ANY    },
+     { NULL,   0                 }
+diff --git a/deps/cares/src/lib/record/ares_dns_multistring.c b/deps/cares/src/lib/record/ares_dns_multistring.c
+index 44fcaccd65..a2a7adc4e4 100644
+--- a/deps/cares/src/lib/record/ares_dns_multistring.c
++++ b/deps/cares/src/lib/record/ares_dns_multistring.c
+@@ -227,7 +227,9 @@ const unsigned char *ares_dns_multistring_combined(ares_dns_multistring_t *strs,
+ 
+   strs->cache_str =
+     (unsigned char *)ares_buf_finish_str(buf, &strs->cache_str_len);
+-  if (strs->cache_str != NULL) {
++  if (strs->cache_str == NULL) {
++    ares_buf_destroy(buf);
++  } else {
+     strs->cache_invalidated = ARES_FALSE;
+   }
+   *len = strs->cache_str_len;
+diff --git a/deps/cares/src/lib/record/ares_dns_name.c b/deps/cares/src/lib/record/ares_dns_name.c
+index a9b92e03ca..ffcaf5e110 100644
+--- a/deps/cares/src/lib/record/ares_dns_name.c
++++ b/deps/cares/src/lib/record/ares_dns_name.c
+@@ -25,6 +25,18 @@
+  */
+ #include "ares_private.h"
+ 
++/* RFC 1035 3.1 limits a name to 255 octets.  We track presentation length
++ * (label octets plus one separator before each label after the first), which is
++ * up to ~2 octets looser than the strict wire limit and so never rejects a
++ * compliant name.  Shared by the read and write paths. */
++#define ARES_MAX_NAME_PRESENTATION_LEN 255
++
++/* A name of <= 255 octets holds at most 128 labels, so it can never legitimately
++ * require more than that many compression-pointer jumps.  Bounding the number of
++ * indirections stops a name built purely from pointers (which never adds label
++ * bytes, so the length cap never fires) from being walked without limit. */
++#define ARES_MAX_INDIRS 128
++
+ typedef struct {
+   char  *name;
+   size_t name_len;
+@@ -48,10 +60,18 @@ static ares_status_t ares_nameoffset_create(ares_llist_t **list,
+   ares_nameoffset_t *off = NULL;
+ 
+   if (list == NULL || name == NULL || ares_strlen(name) == 0 ||
+-      ares_strlen(name) > 255) {
++      ares_strlen(name) > ARES_MAX_NAME_PRESENTATION_LEN) {
+     return ARES_EFORMERR; /* LCOV_EXCL_LINE: DefensiveCoding */
+   }
+ 
++  /* Don't record a name as a compression target if it can't be referenced by
++   * a pointer.  DNS name compression offsets are only 14 bits (RFC 1035
++   * 4.1.4), so a name positioned beyond 0x3FFF would have its offset
++   * truncated when written, producing a pointer to the wrong location. */
++  if (idx > 0x3FFF) {
++    return ARES_SUCCESS;
++  }
++
+   if (*list == NULL) {
+     *list = ares_llist_create(ares_nameoffset_free);
+   }
+@@ -65,7 +85,12 @@ static ares_status_t ares_nameoffset_create(ares_llist_t **list,
+     return ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
+   }
+ 
+-  off->name     = ares_strdup(name);
++  off->name = ares_strdup(name);
++  if (off->name == NULL) {
++    status = ARES_ENOMEM; /* LCOV_EXCL_LINE: OutOfMemory */
++    goto fail;            /* LCOV_EXCL_LINE: OutOfMemory */
++  }
++
+   off->name_len = ares_strlen(off->name);
+   off->idx      = idx;
+ 
+@@ -335,7 +360,8 @@ static ares_status_t ares_split_dns_name(ares_array_t *labels,
+   }
+ 
+   /* Can't exceed maximum (unescaped) length */
+-  if (ares_array_len(labels) && total_len + ares_array_len(labels) - 1 > 255) {
++  if (ares_array_len(labels) &&
++      total_len + ares_array_len(labels) - 1 > ARES_MAX_NAME_PRESENTATION_LEN) {
+     status = ARES_EBADNAME;
+     goto done;
+   }
+@@ -419,6 +445,9 @@ ares_status_t ares_dns_name_write(ares_buf_t *buf, ares_llist_t **list,
+ 
+   /* Output name compression offset jump */
+   if (off != NULL) {
++    /* off->idx is guaranteed to fit in 14 bits: ares_nameoffset_create()
++     * refuses to record offsets beyond 0x3FFF, so the mask below never
++     * actually truncates. */
+     unsigned short u16 =
+       (unsigned short)0xC000 | (unsigned short)(off->idx & 0x3FFF);
+     status = ares_buf_append_be16(buf, u16);
+@@ -531,13 +560,16 @@ fail:
+ }
+ 
+ ares_status_t ares_dns_name_parse(ares_buf_t *buf, char **name,
+-                                  ares_bool_t is_hostname)
++                                  ares_bool_t is_hostname,
++                                  ares_bool_t allow_compression)
+ {
+   size_t        save_offset = 0;
+   unsigned char c;
+   ares_status_t status;
+   ares_buf_t   *namebuf     = NULL;
+   size_t        label_start = ares_buf_get_position(buf);
++  size_t        name_len    = 0;
++  size_t        indir       = 0;
+ 
+   if (buf == NULL) {
+     return ARES_EFORMERR;
+@@ -588,6 +620,13 @@ ares_status_t ares_dns_name_parse(ares_buf_t *buf, char **name,
+        */
+       size_t offset = (size_t)((c & 0x3F) << 8);
+ 
++      /* Some RR types (e.g. SRV) do not permit name compression within their
++       * RDATA.  Reject a compression pointer when it is not allowed. */
++      if (!allow_compression) {
++        status = ARES_EBADNAME;
++        goto fail;
++      }
++
+       /* Fetch second byte of the redirect length */
+       status = ares_buf_fetch_bytes(buf, &c, 1);
+       if (status != ARES_SUCCESS) {
+@@ -609,6 +648,16 @@ ares_status_t ares_dns_name_parse(ares_buf_t *buf, char **name,
+         goto fail;
+       }
+ 
++      /* Bound the number of indirections.  A name made purely of pointers never
++       * adds label bytes, so the length cap below can't stop it; the
++       * strictly-decreasing rule alone still allows thousands of jumps per name.
++       * No legitimate <= 255 octet name needs more than 128 labels/jumps. */
++      indir++;
++      if (indir > ARES_MAX_INDIRS) {
++        status = ARES_EBADNAME;
++        goto fail;
++      }
++
+       /* First time we make a jump, save the current position */
+       if (save_offset == 0) {
+         save_offset = ares_buf_get_position(buf);
+@@ -632,6 +681,20 @@ ares_status_t ares_dns_name_parse(ares_buf_t *buf, char **name,
+ 
+     /* New label */
+ 
++    /* RFC 1035 3.1 limits a name to 255 octets.  Enforce it during
++     * decompression so labels reached through a chain of pointers can't expand a
++     * single name without bound.  Track the presentation length (label data plus
++     * the separator that precedes each label after the first), matching
++     * ares_split_dns_name() on the write side. */
++    if (name_len) {
++      name_len++;
++    }
++    name_len += c;
++    if (name_len > ARES_MAX_NAME_PRESENTATION_LEN) {
++      status = ARES_EBADNAME;
++      goto fail;
++    }
++
+     /* Labels are separated by periods */
+     if (ares_buf_len(namebuf) != 0 && name != NULL) {
+       status = ares_buf_append_byte(namebuf, '.');
+diff --git a/deps/cares/src/lib/record/ares_dns_parse.c b/deps/cares/src/lib/record/ares_dns_parse.c
+index 0c545d7aa1..9dc28e92d8 100644
+--- a/deps/cares/src/lib/record/ares_dns_parse.c
++++ b/deps/cares/src/lib/record/ares_dns_parse.c
+@@ -46,8 +46,14 @@ static ares_status_t ares_dns_parse_and_set_dns_name(ares_buf_t    *buf,
+ {
+   ares_status_t status;
+   char         *name = NULL;
++  /* Only RR types defined in RFC1035 may use name compression within their
++   * RDATA (RFC3597).  Reject compression pointers for any other type (e.g.
++   * SRV per RFC2782) to match the write-side policy and avoid following
++   * pointers that a non-understanding nameserver could not have rewritten. */
++  ares_bool_t   allow_compression =
++    ares_dns_rec_allow_name_comp(ares_dns_rr_get_type(rr));
+ 
+-  status = ares_dns_name_parse(buf, &name, is_hostname);
++  status = ares_dns_name_parse(buf, &name, is_hostname, allow_compression);
+   if (status != ARES_SUCCESS) {
+     return status;
+   }
+@@ -514,6 +520,7 @@ static ares_status_t ares_dns_parse_rr_opt(ares_buf_t *buf, ares_dns_rr_t *rr,
+ 
+     status = ares_dns_rr_set_opt_own(rr, ARES_RR_OPT_OPTIONS, opt, val, len);
+     if (status != ARES_SUCCESS) {
++      ares_free(val);
+       return status;
+     }
+   }
+@@ -607,6 +614,7 @@ static ares_status_t ares_dns_parse_rr_svcb(ares_buf_t *buf, ares_dns_rr_t *rr,
+ 
+     status = ares_dns_rr_set_opt_own(rr, ARES_RR_SVCB_PARAMS, opt, val, len);
+     if (status != ARES_SUCCESS) {
++      ares_free(val);
+       return status;
+     }
+   }
+@@ -658,6 +666,7 @@ static ares_status_t ares_dns_parse_rr_https(ares_buf_t *buf, ares_dns_rr_t *rr,
+ 
+     status = ares_dns_rr_set_opt_own(rr, ARES_RR_HTTPS_PARAMS, opt, val, len);
+     if (status != ARES_SUCCESS) {
++      ares_free(val);
+       return status;
+     }
+   }
+@@ -765,6 +774,12 @@ static ares_status_t ares_dns_parse_rr_raw_rr(ares_buf_t    *buf,
+   ares_status_t  status;
+   unsigned char *bytes = NULL;
+ 
++  /* Can't fail */
++  status = ares_dns_rr_set_u16(rr, ARES_RR_RAW_RR_TYPE, raw_type);
++  if (status != ARES_SUCCESS) {
++    return status;
++  }
++
+   if (rdlength == 0) {
+     return ARES_SUCCESS;
+   }
+@@ -774,13 +789,6 @@ static ares_status_t ares_dns_parse_rr_raw_rr(ares_buf_t    *buf,
+     return status;
+   }
+ 
+-  /* Can't fail */
+-  status = ares_dns_rr_set_u16(rr, ARES_RR_RAW_RR_TYPE, raw_type);
+-  if (status != ARES_SUCCESS) {
+-    ares_free(bytes);
+-    return status;
+-  }
+-
+   status = ares_dns_rr_set_bin_own(rr, ARES_RR_RAW_RR_DATA, bytes, rdlength);
+   if (status != ARES_SUCCESS) {
+     ares_free(bytes);
+@@ -920,30 +928,6 @@ static ares_status_t ares_dns_parse_header(ares_buf_t *buf, unsigned int flags,
+ 
+   (*dnsrec)->raw_rcode = rcode;
+ 
+-  if (*ancount > 0) {
+-    status =
+-      ares_dns_record_rr_prealloc(*dnsrec, ARES_SECTION_ANSWER, *ancount);
+-    if (status != ARES_SUCCESS) {
+-      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+-    }
+-  }
+-
+-  if (*nscount > 0) {
+-    status =
+-      ares_dns_record_rr_prealloc(*dnsrec, ARES_SECTION_AUTHORITY, *nscount);
+-    if (status != ARES_SUCCESS) {
+-      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+-    }
+-  }
+-
+-  if (*arcount > 0) {
+-    status =
+-      ares_dns_record_rr_prealloc(*dnsrec, ARES_SECTION_ADDITIONAL, *arcount);
+-    if (status != ARES_SUCCESS) {
+-      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
+-    }
+-  }
+-
+   return ARES_SUCCESS;
+ 
+ fail:
+@@ -1032,7 +1016,7 @@ static ares_status_t ares_dns_parse_qd(ares_buf_t        *buf,
+    */
+ 
+   /* Name */
+-  status = ares_dns_name_parse(buf, &name, ARES_FALSE);
++  status = ares_dns_name_parse(buf, &name, ARES_FALSE, ARES_TRUE);
+   if (status != ARES_SUCCESS) {
+     goto done;
+   }
+@@ -1103,7 +1087,7 @@ static ares_status_t ares_dns_parse_rr(ares_buf_t *buf, unsigned int flags,
+    */
+ 
+   /* Name */
+-  status = ares_dns_name_parse(buf, &name, ARES_FALSE);
++  status = ares_dns_name_parse(buf, &name, ARES_FALSE, ARES_TRUE);
+   if (status != ARES_SUCCESS) {
+     goto done;
+   }
+@@ -1208,6 +1192,8 @@ static ares_status_t ares_dns_parse_buf(ares_buf_t *buf, unsigned int flags,
+                                         ares_dns_record_t **dnsrec)
+ {
+   ares_status_t  status;
++  size_t         total_rr_count;
++  const size_t   min_rr_wire_len = 11;
+   unsigned short qdcount;
+   unsigned short ancount;
+   unsigned short nscount;
+@@ -1268,6 +1254,35 @@ static ares_status_t ares_dns_parse_buf(ares_buf_t *buf, unsigned int flags,
+     }
+   }
+ 
++  total_rr_count = (size_t)ancount + (size_t)nscount + (size_t)arcount;
++  if (total_rr_count > ares_buf_len(buf) / min_rr_wire_len) {
++    status = ARES_EBADRESP;
++    goto fail;
++  }
++
++  if (ancount > 0) {
++    status = ares_dns_record_rr_prealloc(*dnsrec, ARES_SECTION_ANSWER, ancount);
++    if (status != ARES_SUCCESS) {
++      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
++  if (nscount > 0) {
++    status =
++      ares_dns_record_rr_prealloc(*dnsrec, ARES_SECTION_AUTHORITY, nscount);
++    if (status != ARES_SUCCESS) {
++      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
++  if (arcount > 0) {
++    status =
++      ares_dns_record_rr_prealloc(*dnsrec, ARES_SECTION_ADDITIONAL, arcount);
++    if (status != ARES_SUCCESS) {
++      goto fail; /* LCOV_EXCL_LINE: OutOfMemory */
++    }
++  }
++
+   /* Parse Answers */
+   for (i = 0; i < ancount; i++) {
+     status = ares_dns_parse_rr(buf, flags, ARES_SECTION_ANSWER, *dnsrec);
+@@ -1292,6 +1307,22 @@ static ares_status_t ares_dns_parse_buf(ares_buf_t *buf, unsigned int flags,
+     }
+   }
+ 
++  /* RFC 6891 6.1.1: a message MUST NOT contain more than one OPT RR.  Reject
++   * any response carrying multiple OPT records in the additional section. */
++  {
++    size_t rr_cnt  = ares_dns_record_rr_cnt(*dnsrec, ARES_SECTION_ADDITIONAL);
++    size_t opt_cnt = 0;
++    size_t j;
++    for (j = 0; j < rr_cnt; j++) {
++      const ares_dns_rr_t *rr =
++        ares_dns_record_rr_get_const(*dnsrec, ARES_SECTION_ADDITIONAL, j);
++      if (ares_dns_rr_get_type(rr) == ARES_REC_TYPE_OPT && ++opt_cnt > 1) {
++        status = ARES_EBADRESP;
++        goto fail;
++      }
++    }
++  }
++
+   /* Finalize rcode now that if we have OPT it is processed */
+   if (!ares_dns_rcode_isvalid((*dnsrec)->raw_rcode)) {
+     (*dnsrec)->rcode = ARES_RCODE_SERVFAIL;
+diff --git a/deps/cares/src/lib/record/ares_dns_record.c b/deps/cares/src/lib/record/ares_dns_record.c
+index ec0dfbd13c..2c0dadd084 100644
+--- a/deps/cares/src/lib/record/ares_dns_record.c
++++ b/deps/cares/src/lib/record/ares_dns_record.c
+@@ -929,7 +929,7 @@ ares_status_t ares_dns_rr_add_abin(ares_dns_rr_t *dns_rr, ares_dns_rr_key_t key,
+   ares_dns_datatype_t datatype = ares_dns_rr_key_datatype(key);
+   ares_bool_t         is_nullterm =
+     (datatype == ARES_DATATYPE_ABINP) ? ARES_TRUE : ARES_FALSE;
+-  size_t                   alloclen = is_nullterm ? len + 1 : len;
++  size_t                   alloclen;
+   unsigned char           *temp;
+   ares_dns_multistring_t **strs;
+ 
+@@ -937,6 +937,15 @@ ares_status_t ares_dns_rr_add_abin(ares_dns_rr_t *dns_rr, ares_dns_rr_key_t key,
+     return ARES_EFORMERR;
+   }
+ 
++  if (val == NULL && len != 0) {
++    return ARES_EFORMERR;
++  }
++
++  if (is_nullterm && len == SIZE_MAX) {
++    return ARES_ENOMEM;
++  }
++  alloclen = is_nullterm ? len + 1 : len;
++
+   strs = ares_dns_rr_data_ptr(dns_rr, key, NULL);
+   if (strs == NULL) {
+     return ARES_EFORMERR;
+@@ -954,7 +963,9 @@ ares_status_t ares_dns_rr_add_abin(ares_dns_rr_t *dns_rr, ares_dns_rr_key_t key,
+     return ARES_ENOMEM;
+   }
+ 
+-  memcpy(temp, val, len);
++  if (len != 0) {
++    memcpy(temp, val, len);
++  }
+ 
+   /* NULL-term ABINP */
+   if (is_nullterm) {
+@@ -1237,14 +1248,32 @@ ares_status_t ares_dns_rr_set_bin(ares_dns_rr_t *dns_rr, ares_dns_rr_key_t key,
+     (datatype == ARES_DATATYPE_BINP || datatype == ARES_DATATYPE_ABINP)
+               ? ARES_TRUE
+               : ARES_FALSE;
+-  size_t         alloclen = is_nullterm ? len + 1 : len;
+-  unsigned char *temp     = ares_malloc(alloclen);
++  size_t         alloclen;
++  unsigned char *temp;
++
++  if (datatype != ARES_DATATYPE_BIN && datatype != ARES_DATATYPE_BINP &&
++      datatype != ARES_DATATYPE_ABINP) {
++    return ARES_EFORMERR;
++  }
++
++  if (val == NULL && len != 0) {
++    return ARES_EFORMERR;
++  }
++
++  if (is_nullterm && len == SIZE_MAX) {
++    return ARES_ENOMEM;
++  }
++  alloclen = is_nullterm ? len + 1 : len;
++
++  temp = ares_malloc(alloclen);
+ 
+   if (temp == NULL) {
+     return ARES_ENOMEM;
+   }
+ 
+-  memcpy(temp, val, len);
++  if (len != 0) {
++    memcpy(temp, val, len);
++  }
+ 
+   /* NULL-term BINP */
+   if (is_nullterm) {
+@@ -1400,12 +1429,23 @@ ares_status_t ares_dns_rr_set_opt(ares_dns_rr_t *dns_rr, ares_dns_rr_key_t key,
+   ares_status_t  status;
+ 
+   if (val != NULL) {
+-    temp = ares_malloc(val_len + 1);
++    size_t alloclen;
++
++    if (val_len == SIZE_MAX) {
++      return ARES_ENOMEM;
++    }
++    alloclen = val_len + 1;
++
++    temp = ares_malloc(alloclen);
+     if (temp == NULL) {
+       return ARES_ENOMEM;
+     }
+-    memcpy(temp, val, val_len);
++    if (val_len != 0) {
++      memcpy(temp, val, val_len);
++    }
+     temp[val_len] = 0;
++  } else if (val_len != 0) {
++    return ARES_EFORMERR;
+   }
+ 
+   status = ares_dns_rr_set_opt_own(dns_rr, key, opt, temp, val_len);
+diff --git a/deps/cares/src/lib/str/ares_buf.c b/deps/cares/src/lib/str/ares_buf.c
+index 63acc6cf77..25f0372e4d 100644
+--- a/deps/cares/src/lib/str/ares_buf.c
++++ b/deps/cares/src/lib/str/ares_buf.c
+@@ -139,6 +139,7 @@ static ares_status_t ares_buf_ensure_space(ares_buf_t *buf, size_t needed_size)
+ {
+   size_t         remaining_size;
+   size_t         alloc_size;
++  size_t         total_required;
+   unsigned char *ptr;
+ 
+   if (buf == NULL) {
+@@ -151,9 +152,20 @@ static ares_status_t ares_buf_ensure_space(ares_buf_t *buf, size_t needed_size)
+ 
+   /* When calling ares_buf_finish_str() we end up adding a null terminator,
+    * so we want to ensure the size is always sufficient for this as we don't
+-   * want an ARES_ENOMEM at that point */
++   * want an ARES_ENOMEM at that point.
++   */
++  if (buf->data_len >= SIZE_MAX - 1) {
++    return ARES_ENOMEM;
++  }
++
+   needed_size++;
+ 
++  if (needed_size > SIZE_MAX - buf->data_len) {
++    return ARES_ENOMEM;
++  }
++
++  total_required = buf->data_len + needed_size;
++
+   /* No need to do an expensive move operation, we have enough to just append */
+   remaining_size = buf->alloc_buf_len - buf->data_len;
+   if (remaining_size >= needed_size) {
+@@ -177,9 +189,11 @@ static ares_status_t ares_buf_ensure_space(ares_buf_t *buf, size_t needed_size)
+ 
+   /* Increase allocation by powers of 2 */
+   do {
+-    alloc_size     <<= 1;
+-    remaining_size   = alloc_size - buf->data_len;
+-  } while (remaining_size < needed_size);
++    if (alloc_size > SIZE_MAX >> 1) {
++      return ARES_ENOMEM;
++    }
++    alloc_size <<= 1;
++  } while (alloc_size < total_required);
+ 
+   ptr = ares_realloc(buf->alloc_buf, alloc_size);
+   if (ptr == NULL) {
+@@ -1111,7 +1125,7 @@ ares_status_t ares_buf_replace(ares_buf_t *buf, const unsigned char *srch,
+   size_t        processed_len = 0;
+   ares_status_t status;
+ 
+-  if (buf->alloc_buf == NULL || srch == NULL || srch_size == 0 ||
++  if (buf == NULL || buf->alloc_buf == NULL || srch == NULL || srch_size == 0 ||
+       (rplc == NULL && rplc_size != 0)) {
+     return ARES_EFORMERR;
+   }
+@@ -1131,7 +1145,7 @@ ares_status_t ares_buf_replace(ares_buf_t *buf, const unsigned char *srch,
+     /* Store the offset this was found because our actual pointer might be
+      * switched out from under us by the call to ensure_space() if the
+      * replacement pattern is larger than the search pattern */
+-    found_offset   = (size_t)(ptr - (size_t)(buf->alloc_buf + buf->offset));
++    found_offset = (size_t)(ptr - buf->alloc_buf) - buf->offset;
+     if (rplc_size > srch_size) {
+       status = ares_buf_ensure_space(buf, rplc_size - srch_size);
+       if (status != ARES_SUCCESS) {
+@@ -1262,17 +1276,15 @@ static ares_status_t
+   }
+ 
+ done:
+-  if (status != ARES_SUCCESS) {
+-    ares_buf_destroy(binbuf);
++  if (status == ARES_SUCCESS && bin != NULL) {
++    size_t mylen = 0;
++    /* NOTE: we use ares_buf_finish_str() here as we guarantee NULL
++     *       Termination even though we are technically returning binary data.
++     */
++    *bin     = (unsigned char *)ares_buf_finish_str(binbuf, &mylen);
++    *bin_len = mylen;
+   } else {
+-    if (bin != NULL) {
+-      size_t mylen = 0;
+-      /* NOTE: we use ares_buf_finish_str() here as we guarantee NULL
+-       *       Termination even though we are technically returning binary data.
+-       */
+-      *bin     = (unsigned char *)ares_buf_finish_str(binbuf, &mylen);
+-      *bin_len = mylen;
+-    }
++    ares_buf_destroy(binbuf);
+   }
+ 
+   return status;
+diff --git a/deps/cares/src/lib/str/ares_str.c b/deps/cares/src/lib/str/ares_str.c
+index 0eda1ab9f1..0819dc5784 100644
+--- a/deps/cares/src/lib/str/ares_str.c
++++ b/deps/cares/src/lib/str/ares_str.c
+@@ -28,6 +28,9 @@
+ #include "ares_private.h"
+ #include "ares_str.h"
+ 
++#include <errno.h>
++#include <limits.h>
++
+ #ifdef HAVE_STDINT_H
+ #  include <stdint.h>
+ #endif
+@@ -125,6 +128,57 @@ ares_bool_t ares_str_isnum(const char *str)
+   return ARES_TRUE;
+ }
+ 
++ares_bool_t ares_str_parse_uint(const char *str, unsigned long max,
++                                unsigned int *out)
++{
++  char         *end = NULL;
++  unsigned long val;
++
++  /* Require a leading digit so strtoul()'s tolerance of a sign or leading
++   * whitespace (e.g. "-1" wrapping to UINT_MAX) can't slip through here. This
++   * also rejects NULL and empty strings. */
++  if (str == NULL || out == NULL || !ares_isdigit(*str)) {
++    return ARES_FALSE;
++  }
++
++  /* out is unsigned int, so a max above UINT_MAX would let strtoul's result
++   * truncate silently on assignment.  Cap it. */
++  if (max > UINT_MAX) {
++    max = UINT_MAX;
++  }
++
++  errno = 0;
++  val   = strtoul(str, &end, 10);
++  if (errno == ERANGE || *end != '\0' || val > max) {
++    return ARES_FALSE;
++  }
++
++  *out = (unsigned int)val;
++  return ARES_TRUE;
++}
++
++ares_bool_t ares_parse_port(const char *str, unsigned short *port,
++                            ares_bool_t allow_zero)
++{
++  unsigned int val;
++
++  if (port == NULL) {
++    return ARES_FALSE;
++  }
++
++  if (!ares_str_parse_uint(str, 65535UL, &val)) {
++    return ARES_FALSE;
++  }
++
++  if (!allow_zero && val == 0) {
++    return ARES_FALSE;
++  }
++
++  *port = (unsigned short)val;
++
++  return ARES_TRUE;
++}
++
+ ares_bool_t ares_str_isalnum(const char *str)
+ {
+   size_t i;
+diff --git a/deps/cares/src/lib/util/ares_iface_ips.c b/deps/cares/src/lib/util/ares_iface_ips.c
+index c5f507f87e..66d1fba84d 100644
+--- a/deps/cares/src/lib/util/ares_iface_ips.c
++++ b/deps/cares/src/lib/util/ares_iface_ips.c
+@@ -25,6 +25,8 @@
+  */
+ #include "ares_private.h"
+ 
++#include <limits.h>
++
+ #ifdef USE_WINSOCK
+ #  include <winsock2.h>
+ #  include <ws2tcpip.h>
+@@ -256,12 +258,12 @@ ares_iface_ip_flags_t ares_iface_ips_get_flags(const ares_iface_ips_t *ips,
+   const ares_iface_ip_t *ip;
+ 
+   if (ips == NULL) {
+-    return 0;
++    return ARES_IFACE_IP_NONE;
+   }
+ 
+   ip = ares_array_at_const(ips->ips, idx);
+   if (ip == NULL) {
+-    return 0;
++    return ARES_IFACE_IP_NONE;
+   }
+ 
+   return ip->flags;
+@@ -329,6 +331,8 @@ static char *wcharp_to_charp(const wchar_t *in)
+ static ares_bool_t name_match(const char *name, const char *adapter_name,
+                               unsigned int ll_scope)
+ {
++  unsigned int scope;
++
+   if (name == NULL || *name == 0) {
+     return ARES_TRUE;
+   }
+@@ -337,7 +341,7 @@ static ares_bool_t name_match(const char *name, const char *adapter_name,
+     return ARES_TRUE;
+   }
+ 
+-  if (ares_str_isnum(name) && (unsigned int)atoi(name) == ll_scope) {
++  if (ares_str_parse_uint(name, UINT_MAX, &scope) && scope == ll_scope) {
+     return ARES_TRUE;
+   }
+ 
+@@ -376,7 +380,7 @@ static ares_status_t ares_iface_ips_enumerate(ares_iface_ips_t *ips,
+ 
+   for (address = addresses; address != NULL; address = address->Next) {
+     IP_ADAPTER_UNICAST_ADDRESS *ipaddr     = NULL;
+-    ares_iface_ip_flags_t       addrflag   = 0;
++    ares_iface_ip_flags_t       addrflag   = ARES_IFACE_IP_NONE;
+     char                        ifname[64] = "";
+ 
+ #  if defined(HAVE_CONVERTINTERFACEINDEXTOLUID) && \
+@@ -477,7 +481,7 @@ static ares_status_t ares_iface_ips_enumerate(ares_iface_ips_t *ips,
+   }
+ 
+   for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
+-    ares_iface_ip_flags_t addrflag = 0;
++    ares_iface_ip_flags_t addrflag = ARES_IFACE_IP_NONE;
+     struct ares_addr      addr;
+     unsigned char         netmask  = 0;
+     unsigned int          ll_scope = 0;
+@@ -500,20 +504,28 @@ static ares_status_t ares_iface_ips_enumerate(ares_iface_ips_t *ips,
+       addr.family = AF_INET;
+       memcpy(&addr.addr.addr4, &sockaddr_in->sin_addr, sizeof(addr.addr.addr4));
+       /* netmask */
+-      sockaddr_in = (struct sockaddr_in *)((void *)ifa->ifa_netmask);
+-      netmask     = count_addr_bits((const void *)&sockaddr_in->sin_addr, 4);
++      if (ifa->ifa_netmask != NULL) {
++        sockaddr_in = (struct sockaddr_in *)((void *)ifa->ifa_netmask);
++        netmask     = count_addr_bits((const void *)&sockaddr_in->sin_addr, 4);
++      } else {
++        netmask = 32;
++      }
+     } else if (ifa->ifa_addr->sa_family == AF_INET6) {
+       const struct sockaddr_in6 *sockaddr_in6 =
+         (const struct sockaddr_in6 *)((void *)ifa->ifa_addr);
+       addr.family = AF_INET6;
+       memcpy(&addr.addr.addr6, &sockaddr_in6->sin6_addr,
+              sizeof(addr.addr.addr6));
+-      /* netmask */
+-      sockaddr_in6 = (struct sockaddr_in6 *)((void *)ifa->ifa_netmask);
+-      netmask = count_addr_bits((const void *)&sockaddr_in6->sin6_addr, 16);
+ #  ifdef HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID
+       ll_scope = sockaddr_in6->sin6_scope_id;
+ #  endif
++      /* netmask */
++      if (ifa->ifa_netmask != NULL) {
++        sockaddr_in6 = (struct sockaddr_in6 *)((void *)ifa->ifa_netmask);
++        netmask = count_addr_bits((const void *)&sockaddr_in6->sin6_addr, 16);
++      } else {
++        netmask = 128;
++      }
+     } else {
+       /* unknown */
+       continue;
+diff --git a/deps/cares/src/lib/util/ares_iface_ips.h b/deps/cares/src/lib/util/ares_iface_ips.h
+index f22e09046a..ec2353448f 100644
+--- a/deps/cares/src/lib/util/ares_iface_ips.h
++++ b/deps/cares/src/lib/util/ares_iface_ips.h
+@@ -28,6 +28,7 @@
+ 
+ /*! Flags for interface ip addresses. */
+ typedef enum {
++  ARES_IFACE_IP_NONE      = 0,             /*!< No flags set / unspecified */
+   ARES_IFACE_IP_V4 = 1 << 0,        /*!< IPv4 address. During enumeration if
+                                      *   this flag is set ARES_IFACE_IP_V6
+                                      *   is not, will only enumerate v4
+diff --git a/deps/cares/src/lib/util/ares_math.c b/deps/cares/src/lib/util/ares_math.c
+index 1106bf6bf1..3513146c3d 100644
+--- a/deps/cares/src/lib/util/ares_math.c
++++ b/deps/cares/src/lib/util/ares_math.c
+@@ -42,7 +42,7 @@ static unsigned int ares_round_up_pow2_u32(unsigned int n)
+   return n;
+ }
+ 
+-static ares_int64_t ares_round_up_pow2_u64(ares_int64_t n)
++static ares_uint64_t ares_round_up_pow2_u64(ares_uint64_t n)
+ {
+   /* NOTE: if already a power of 2, will return itself, not the next */
+   n--;
+@@ -73,7 +73,7 @@ ares_bool_t ares_is_64bit(void)
+ size_t ares_round_up_pow2(size_t n)
+ {
+   if (ares_is_64bit()) {
+-    return (size_t)ares_round_up_pow2_u64((ares_int64_t)n);
++    return (size_t)ares_round_up_pow2_u64((ares_uint64_t)n);
+   }
+ 
+   return (size_t)ares_round_up_pow2_u32((unsigned int)n);
+@@ -156,3 +156,12 @@ unsigned char ares_count_bits_u8(unsigned char x)
+   static const unsigned char lookup[256] = { B6(0), B6(1), B6(1), B6(2) };
+   return lookup[x];
+ }
++
++ares_bool_t ares_size_t_mul_overflow(size_t a, size_t b, size_t *res)
++{
++  if (a > 0 && b > SIZE_MAX / a) {
++    return ARES_TRUE;
++  }
++  *res = a * b;
++  return ARES_FALSE;
++}
+diff --git a/deps/cares/src/lib/util/ares_math.h b/deps/cares/src/lib/util/ares_math.h
+index 3b60b00bdb..76e1e48837 100644
+--- a/deps/cares/src/lib/util/ares_math.h
++++ b/deps/cares/src/lib/util/ares_math.h
+@@ -50,4 +50,9 @@ size_t        ares_count_digits(size_t n);
+ size_t        ares_count_hexdigits(size_t n);
+ unsigned char ares_count_bits_u8(unsigned char x);
+ 
++/*! Multiply two size_t values, checking for overflow.  On success writes the
++ *  product to *res and returns ARES_FALSE.  On overflow returns ARES_TRUE and
++ *  leaves *res untouched. */
++ares_bool_t ares_size_t_mul_overflow(size_t a, size_t b, size_t *res);
++
+ #endif
+diff --git a/deps/cares/src/lib/util/ares_threads.c b/deps/cares/src/lib/util/ares_threads.c
+index ab0b51afb7..b27b7ebd70 100644
+--- a/deps/cares/src/lib/util/ares_threads.c
++++ b/deps/cares/src/lib/util/ares_threads.c
+@@ -563,8 +563,7 @@ ares_status_t ares_queue_wait_empty(ares_channel_t *channel, int timeout_ms)
+ 
+   if (timeout_ms >= 0) {
+     ares_tvnow(&tout);
+-    tout.sec  += (ares_int64_t)(timeout_ms / 1000);
+-    tout.usec += (unsigned int)(timeout_ms % 1000) * 1000;
++    ares_timeval_add(&tout, (size_t)timeout_ms);
+   }
+ 
+   ares_thread_mutex_lock(channel->lock);
+diff --git a/deps/cares/src/lib/util/ares_time.h b/deps/cares/src/lib/util/ares_time.h
+index c6eaf97366..ecb721de18 100644
+--- a/deps/cares/src/lib/util/ares_time.h
++++ b/deps/cares/src/lib/util/ares_time.h
+@@ -39,6 +39,7 @@ ares_bool_t ares_timedout(const ares_timeval_t *now,
+                           const ares_timeval_t *check);
+ 
+ void        ares_tvnow(ares_timeval_t *now);
++void        ares_timeval_add(ares_timeval_t *now, size_t millisecs);
+ void        ares_timeval_remaining(ares_timeval_t       *remaining,
+                                    const ares_timeval_t *now,
+                                    const ares_timeval_t *tout);
+diff --git a/deps/cares/src/lib/util/ares_uri.c b/deps/cares/src/lib/util/ares_uri.c
+index 04bad0074a..97f3f3f542 100644
+--- a/deps/cares/src/lib/util/ares_uri.c
++++ b/deps/cares/src/lib/util/ares_uri.c
+@@ -1174,6 +1174,7 @@ static ares_status_t ares_uri_parse_hostport(ares_uri_t *uri, ares_buf_t *buf)
+   unsigned char b;
+   char          host[256];
+   char          port[6];
++  unsigned short parsed_port;
+   size_t        len;
+   ares_status_t status;
+ 
+@@ -1242,11 +1243,11 @@ static ares_status_t ares_uri_parse_hostport(ares_uri_t *uri, ares_buf_t *buf)
+   }
+   port[len] = 0;
+ 
+-  if (!ares_str_isnum(port)) {
++  if (!ares_parse_port(port, &parsed_port, ARES_TRUE)) {
+     return ARES_EBADSTR;
+   }
+ 
+-  status = ares_uri_set_port(uri, (unsigned short)atoi(port));
++  status = ares_uri_set_port(uri, parsed_port);
+   if (status != ARES_SUCCESS) {
+     return status;
+   }
+diff --git a/deps/cares/src/tools/adig.c b/deps/cares/src/tools/adig.c
+index fce210a805..29f359a392 100644
+--- a/deps/cares/src/tools/adig.c
++++ b/deps/cares/src/tools/adig.c
+@@ -1162,12 +1162,12 @@ static ares_bool_t read_cmdline(int argc, const char * const *argv,
+       /* skip prefix */
+       if (dig_options[opt].prefix != 0) {
+         nameptr++;
+-      }
+-
+-      /* Negated option if it has a 'no' prefix */
+-      if (ares_streq_max(nameptr, "no", 2)) {
+-        is_true  = ARES_FALSE;
+-        nameptr += 2;
++        /* Negated option if it has a 'no' prefix */
++        if (dig_options[opt].prefix == '+' &&
++            ares_streq_max(nameptr, "no", 2)) {
++          is_true  = ARES_FALSE;
++          nameptr += 2;
++        }
+       }
+ 
+       if (dig_options[opt].separator != 0) {
+diff --git a/deps/cares/src/tools/ahost.c b/deps/cares/src/tools/ahost.c
+index 7d1d4a86dc..67b5677cad 100644
+--- a/deps/cares/src/tools/ahost.c
++++ b/deps/cares/src/tools/ahost.c
+@@ -44,6 +44,13 @@
+ 
+ #include "ares_str.h"
+ 
++#define RV_OK     0 /* Success */
++#define RV_SYSERR 1 /* Internal system failure */
++#define RV_MISUSE 2 /* Misuse (command line) */
++#define RV_FAIL   3 /* Resolution failure */
++static int final_rv = RV_OK;
++
++
+ static void callback(void *arg, int status, int timeouts, struct hostent *host);
+ static void ai_callback(void *arg, int status, int timeouts,
+                         struct ares_addrinfo *result);

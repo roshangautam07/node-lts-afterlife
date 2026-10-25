@@ -1,0 +1,174 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Matteo Collina <hello@matteocollina.com>
+Date: Mon, 11 May 2026 09:29:15 +0200
+Subject: [PATCH 05/60] dns,net: reject hostnames with embedded NUL bytes
+
+Ref: https://hackerone.com/reports/3656716
+PR-URL: https://github.com/nodejs-private/node-private/pull/868
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+CVE-ID: CVE-2026-48930
+Refs: https://hackerone.com/reports/3656716
+(cherry picked from commit c551a51d0c58dfc91961fb3f24c2c86af6183eca)
+---
+ lib/dns.js                                    |  4 +--
+ lib/internal/dns/promises.js                  |  3 ++-
+ lib/internal/validators.js                    | 10 ++++++++
+ lib/net.js                                    |  3 +++
+ test/parallel/test-dns-lookup.js              | 11 ++++++++
+ .../test-net-connect-options-invalid.js       | 25 +++++++++++++++++++
+ 6 files changed, 53 insertions(+), 3 deletions(-)
+
+diff --git a/lib/dns.js b/lib/dns.js
+index 3a2e118663..7c02a29df8 100644
+--- a/lib/dns.js
++++ b/lib/dns.js
+@@ -84,7 +84,7 @@ const {
+   validateNumber,
+   validateOneOf,
+   validatePort,
+-  validateString,
++  validateStringWithoutNullBytes,
+ } = require('internal/validators');
+ 
+ const {
+@@ -148,7 +148,7 @@ function lookup(hostname, options, callback) {
+ 
+   // Parse arguments
+   if (hostname) {
+-    validateString(hostname, 'hostname');
++    validateStringWithoutNullBytes(hostname, 'hostname');
+   }
+ 
+   if (typeof options === 'function') {
+diff --git a/lib/internal/dns/promises.js b/lib/internal/dns/promises.js
+index de6e591a24..362f095690 100644
+--- a/lib/internal/dns/promises.js
++++ b/lib/internal/dns/promises.js
+@@ -69,6 +69,7 @@ const {
+   validateOneOf,
+   validatePort,
+   validateString,
++  validateStringWithoutNullBytes,
+ } = require('internal/validators');
+ 
+ const kPerfHooksDnsLookupContext = Symbol('kPerfHooksDnsLookupContext');
+@@ -199,7 +200,7 @@ function lookup(hostname, options) {
+ 
+   // Parse arguments
+   if (hostname) {
+-    validateString(hostname, 'hostname');
++    validateStringWithoutNullBytes(hostname, 'hostname');
+   }
+ 
+   if (typeof options === 'number') {
+diff --git a/lib/internal/validators.js b/lib/internal/validators.js
+index 56f5612126..a7295f3797 100644
+--- a/lib/internal/validators.js
++++ b/lib/internal/validators.js
+@@ -16,6 +16,7 @@ const {
+   ObjectPrototypeHasOwnProperty,
+   RegExpPrototypeExec,
+   String,
++  StringPrototypeIncludes,
+   StringPrototypeToUpperCase,
+   StringPrototypeTrim,
+ } = primordials;
+@@ -163,6 +164,14 @@ const validateString = hideStackFrames((value, name) => {
+     throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
+ });
+ 
++/** @type {validateString} */
++const validateStringWithoutNullBytes = hideStackFrames((value, name) => {
++  validateString(value, name);
++  if (StringPrototypeIncludes(value, '\u0000')) {
++    throw new ERR_INVALID_ARG_VALUE(name, value, 'must be a string without null bytes');
++  }
++});
++
+ /**
+  * @callback validateNumber
+  * @param {*} value
+@@ -636,6 +645,7 @@ module.exports = {
+   validatePort,
+   validateSignalName,
+   validateString,
++  validateStringWithoutNullBytes,
+   validateUint32,
+   validateUndefined,
+   validateUnion,
+diff --git a/lib/net.js b/lib/net.js
+index 05239dacf3..d139effc30 100644
+--- a/lib/net.js
++++ b/lib/net.js
+@@ -128,6 +128,7 @@ const {
+   validateNumber,
+   validatePort,
+   validateString,
++  validateStringWithoutNullBytes,
+ } = require('internal/validators');
+ const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
+ const { getOptionValue } = require('internal/options');
+@@ -1286,6 +1287,8 @@ function lookupAndConnect(self, options) {
+   const host = options.host || 'localhost';
+   let { port, autoSelectFamilyAttemptTimeout, autoSelectFamily } = options;
+ 
++  validateStringWithoutNullBytes(host, 'options.host');
++
+   if (localAddress && !isIP(localAddress)) {
+     throw new ERR_INVALID_IP_ADDRESS(localAddress);
+   }
+diff --git a/test/parallel/test-dns-lookup.js b/test/parallel/test-dns-lookup.js
+index 404c5555c5..b13b50d042 100644
+--- a/test/parallel/test-dns-lookup.js
++++ b/test/parallel/test-dns-lookup.js
+@@ -23,6 +23,17 @@ const dnsPromises = dns.promises;
+   assert.throws(() => dnsPromises.lookup(1, {}), err);
+ }
+ 
++{
++  const err = {
++    code: 'ERR_INVALID_ARG_VALUE',
++    name: 'TypeError',
++    message: /The argument 'hostname' must be a string without null bytes\./,
++  };
++
++  assert.throws(() => dns.lookup('127.0.0.1\u0000.allowed.example', {}), err);
++  assert.throws(() => dnsPromises.lookup('127.0.0.1\u0000.allowed.example', {}), err);
++}
++
+ // This also verifies different expectWarning notations.
+ common.expectWarning({
+   // For 'internal/test/binding' module.
+diff --git a/test/parallel/test-net-connect-options-invalid.js b/test/parallel/test-net-connect-options-invalid.js
+index 05a5654630..fadbedf359 100644
+--- a/test/parallel/test-net-connect-options-invalid.js
++++ b/test/parallel/test-net-connect-options-invalid.js
+@@ -25,3 +25,28 @@ const net = require('net');
+     });
+   });
+ }
++
++{
++  assert.throws(() => {
++    net.createConnection({
++      host: ['192.168.0.1'],
++      port: 8080,
++    });
++  }, {
++    code: 'ERR_INVALID_ARG_TYPE',
++    name: 'TypeError',
++  });
++}
++
++{
++  assert.throws(() => {
++    net.createConnection({
++      host: '127.0.0.1\u0000.allowed.example',
++      port: 8080,
++    });
++  }, {
++    code: 'ERR_INVALID_ARG_VALUE',
++    name: 'TypeError',
++    message: /The property 'options\.host' must be a string without null bytes\./,
++  });
++}

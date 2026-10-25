@@ -1,0 +1,109 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: KaKa <23028015+climba03003@users.noreply.github.com>
+Date: Wed, 11 Jun 2025 21:47:31 +0800
+Subject: [PATCH 37/74] http2: fix DEP0194 message
+
+PR-URL: https://github.com/nodejs/node/pull/58669
+Backport-PR-URL: https://github.com/nodejs/node/pull/63195
+Reviewed-By: Marco Ippolito <marcoippolito54@gmail.com>
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+Reviewed-By: Rafael Gonzaga <rafael.nunu@hotmail.com>
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+(cherry picked from commit 0c37bff2ff72d69f2c6c47f6043ea6c173f96dfd)
+(cherry picked from commit b4a8b3c4ca528363ccece4db14a7a321768b6369)
+---
+ lib/internal/http2/core.js                                 | 4 ++--
+ test/parallel/test-http2-client-priority-before-connect.js | 2 +-
+ test/parallel/test-http2-client-set-priority.js            | 2 +-
+ test/parallel/test-http2-priority-cycle-.js                | 2 +-
+ test/parallel/test-http2-priority-event.js                 | 2 +-
+ test/parallel/test-http2-server-stream-session-destroy.js  | 2 +-
+ 6 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/lib/internal/http2/core.js b/lib/internal/http2/core.js
+index e5af2ecbe6..b1b6baa37d 100644
+--- a/lib/internal/http2/core.js
++++ b/lib/internal/http2/core.js
+@@ -710,7 +710,7 @@ function onGoawayData(code, lastStreamID, buf) {
+ 
+ // TODO(aduh95): remove this in future semver-major
+ const deprecateWeight = deprecateProperty('weight',
+-                                          'Priority signaling has been deprecated as of RFC 1993.',
++                                          'Priority signaling has been deprecated as of RFC 9113.',
+                                           'DEP0194');
+ 
+ // When a ClientHttp2Session is first created, the socket may not yet be
+@@ -2381,7 +2381,7 @@ class Http2Stream extends Duplex {
+ Http2Stream.prototype.priority = deprecate(function priority(options) {
+   if (this.destroyed)
+     throw new ERR_HTTP2_INVALID_STREAM();
+-}, 'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993', 'DEP0194');
++}, 'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 9113', 'DEP0194');
+ 
+ function callTimeout(self, kSession) {
+   // If the session is destroyed, this should never actually be invoked,
+diff --git a/test/parallel/test-http2-client-priority-before-connect.js b/test/parallel/test-http2-client-priority-before-connect.js
+index 2620126585..b211e4743d 100644
+--- a/test/parallel/test-http2-client-priority-before-connect.js
++++ b/test/parallel/test-http2-client-priority-before-connect.js
+@@ -7,7 +7,7 @@ const h2 = require('http2');
+ 
+ common.expectWarning(
+   'DeprecationWarning',
+-  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 9113',
+   'DEP0194');
+ 
+ const server = h2.createServer();
+diff --git a/test/parallel/test-http2-client-set-priority.js b/test/parallel/test-http2-client-set-priority.js
+index 7900c1173f..fbaa55ecd2 100644
+--- a/test/parallel/test-http2-client-set-priority.js
++++ b/test/parallel/test-http2-client-set-priority.js
+@@ -8,7 +8,7 @@ const http2 = require('http2');
+ 
+ common.expectWarning(
+   'DeprecationWarning',
+-  'Priority signaling has been deprecated as of RFC 1993.',
++  'Priority signaling has been deprecated as of RFC 9113.',
+   'DEP0194');
+ 
+ const checkWeight = (actual, expect) => {
+diff --git a/test/parallel/test-http2-priority-cycle-.js b/test/parallel/test-http2-priority-cycle-.js
+index 49a6de1029..4434431580 100644
+--- a/test/parallel/test-http2-priority-cycle-.js
++++ b/test/parallel/test-http2-priority-cycle-.js
+@@ -9,7 +9,7 @@ const Countdown = require('../common/countdown');
+ 
+ common.expectWarning(
+   'DeprecationWarning',
+-  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 9113',
+   'DEP0194');
+ 
+ const server = http2.createServer();
+diff --git a/test/parallel/test-http2-priority-event.js b/test/parallel/test-http2-priority-event.js
+index dad9433620..321647dc75 100644
+--- a/test/parallel/test-http2-priority-event.js
++++ b/test/parallel/test-http2-priority-event.js
+@@ -7,7 +7,7 @@ const h2 = require('http2');
+ 
+ common.expectWarning(
+   'DeprecationWarning',
+-  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 9113',
+   'DEP0194');
+ 
+ const server = h2.createServer();
+diff --git a/test/parallel/test-http2-server-stream-session-destroy.js b/test/parallel/test-http2-server-stream-session-destroy.js
+index 88fcb3b3cd..4e540e3149 100644
+--- a/test/parallel/test-http2-server-stream-session-destroy.js
++++ b/test/parallel/test-http2-server-stream-session-destroy.js
+@@ -8,7 +8,7 @@ const h2 = require('http2');
+ 
+ common.expectWarning(
+   'DeprecationWarning',
+-  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 1993',
++  'http2Stream.priority is longer supported after priority signalling was deprecated in RFC 9113',
+   'DEP0194');
+ 
+ const server = h2.createServer();

@@ -1,0 +1,190 @@
+TAP version 13
+1..47
+ok 1 parallel/test-dns-resolve-null-bytes
+  ---
+  duration_ms: 75.05000
+  ...
+ok 2 parallel/test-dns-lookup
+  ---
+  duration_ms: 79.42100
+  ...
+ok 3 parallel/test-crypto-authenticated
+  ---
+  duration_ms: 122.82500
+  ...
+ok 4 parallel/test-dns-setlocaladdress
+  ---
+  duration_ms: 58.57400
+  ...
+ok 5 parallel/test-http-agent-free-socket-pending-read
+  ---
+  duration_ms: 71.96100
+  ...
+ok 6 parallel/test-dns-resolveany-ttl-overflow
+  ---
+  duration_ms: 137.25300
+  ...
+ok 7 parallel/test-http-agent-free-socket-data-guard
+  ---
+  duration_ms: 225.07600
+  ...
+ok 8 parallel/test-http-max-headers-count
+  ---
+  duration_ms: 90.28600
+  ...
+ok 9 parallel/test-http-max-headers-count-overflow
+  ---
+  duration_ms: 158.12800
+  ...
+ok 10 parallel/test-http-agent-keepalive
+  ---
+  duration_ms: 432.32200
+  ...
+ok 11 parallel/test-http2-client-priority-before-connect
+  ---
+  duration_ms: 90.13000
+  ...
+ok 12 parallel/test-http2-client-request-options-errors
+  ---
+  duration_ms: 70.50000
+  ...
+ok 13 parallel/test-http2-client-set-priority
+  ---
+  duration_ms: 135.96800
+  ...
+ok 14 parallel/test-http2-misbehaving-flow-control
+  ---
+  duration_ms: 81.14400
+  ...
+ok 15 parallel/test-http2-max-session-memory-stalled-headers
+  ---
+  duration_ms: 225.88100
+  ...
+ok 16 parallel/test-http-expect-continue-reuse-race
+  ---
+  duration_ms: 733.36900
+  ...
+ok 17 parallel/test-http2-misbehaving-flow-control-paused
+  ---
+  duration_ms: 75.82400
+  ...
+ok 18 parallel/test-http2-options-max-headers-exceeds-nghttp2
+  ---
+  duration_ms: 80.97400
+  ...
+ok 19 parallel/test-http2-priority-cycle-
+  ---
+  duration_ms: 114.57000
+  ...
+ok 20 parallel/test-http2-priority-event
+  ---
+  duration_ms: 97.12700
+  ...
+ok 21 parallel/test-http2-respond-file-fd-leak
+  ---
+  duration_ms: 76.05200
+  ...
+ok 22 parallel/test-http2-server-stream-session-destroy
+  ---
+  duration_ms: 90.51700
+  ...
+ok 23 parallel/test-http2-session-cleanup-on-nghttp2-goaway
+  ---
+  duration_ms: 77.64500
+  ...
+ok 24 parallel/test-http2-rst-stream-reentrancy
+  ---
+  duration_ms: 134.45200
+  ...
+ok 25 parallel/test-https-agent-getname
+  ---
+  duration_ms: 61.49700
+  ...
+ok 26 parallel/test-http2-session-reuse-different-authority
+  ---
+  duration_ms: 136.27100
+  ...
+ok 27 parallel/test-https-agent-checkserveridentity-reuse
+  ---
+  duration_ms: 141.91400
+  ...
+ok 28 parallel/test-https-agent-pfx-object-array-reuse
+  ---
+  duration_ms: 174.99400
+  ...
+ok 29 parallel/test-https-max-headers-count
+  ---
+  duration_ms: 146.63000
+  ...
+ok 30 parallel/test-net-connect-options-invalid
+  ---
+  duration_ms: 64.31900
+  ...
+ok 31 parallel/test-https-session-reuse-different-servername
+  ---
+  duration_ms: 135.26800
+  ...
+ok 32 parallel/test-permission-fs-filehandle-utimes
+  ---
+  duration_ms: 43.33300
+  ...
+ok 33 parallel/test-https-expect-continue-reuse-race
+  ---
+  duration_ms: 335.39400
+  ...
+ok 34 parallel/test-permission-fs-read
+  ---
+  duration_ms: 170.22600
+  ...
+ok 35 parallel/test-permission-fs-require
+  ---
+  duration_ms: 210.21000
+  ...
+ok 36 parallel/test-tls-check-server-identity
+  ---
+  duration_ms: 86.22600
+  ...
+ok 37 parallel/test-permission-fs-write-trace-events
+  ---
+  duration_ms: 149.05100
+  ...
+ok 38 parallel/test-permission-fs-write-report
+  ---
+  duration_ms: 299.98200
+  ...
+ok 39 parallel/test-tls-connect-non-canonical-ip
+  ---
+  duration_ms: 125.25000
+  ...
+ok 40 parallel/test-tls-session-reuse-different-servername
+  ---
+  duration_ms: 139.01000
+  ...
+ok 41 parallel/test-whatwg-encoding-encodeinto-large
+  ---
+  duration_ms: 74.79400
+  ...
+ok 42 parallel/test-tls-sni-case-insensitive
+  ---
+  duration_ms: 186.70000
+  ...
+ok 43 parallel/test-whatwg-url-custom-setters
+  ---
+  duration_ms: 92.73000
+  ...
+ok 44 parallel/test-zlib-reset-during-write
+  ---
+  duration_ms: 88.07300
+  ...
+ok 45 parallel/test-tls-spki-blocklist
+  ---
+  duration_ms: 328.89700
+  ...
+ok 46 parallel/test-zlib-invalid-input
+  ---
+  duration_ms: 422.42600
+  ...
+ok 47 parallel/test-crypto-random-cache-snapshot
+  ---
+  duration_ms: 2628.25500
+  ...

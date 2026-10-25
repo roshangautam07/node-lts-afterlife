@@ -1,0 +1,123 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Filip Skokan <panva.ip@gmail.com>
+Date: Mon, 25 May 2026 11:09:31 +0200
+Subject: [PATCH 20/74] crypto: guard WebCrypto cipher output length
+
+Reject WebCrypto cipher operations whose computed output length would
+exceed INT_MAX before passing the length to OpenSSL.
+
+This avoids signed overflow in the AES and ChaCha20-Poly1305 one-shot
+cipher paths and turns oversized inputs into a clean operation failure.
+
+Refs: https://hackerone.com/reports/3760016
+Signed-off-by: Filip Skokan <panva.ip@gmail.com>
+Backport-PR-URL: https://github.com/nodejs-private/node-private/pull/879
+Reviewed-By: Antoine du Hamel <duhamelantoine1995@gmail.com>
+PR-URL: https://github.com/nodejs-private/node-private/pull/878
+CVE-ID: CVE-2026-48933
+(cherry picked from commit 38b4c5ed51b2ec81c28fbd379fea72e22fa12a15)
+(cherry picked from commit c8e11ac2925547e6f800d000e3a6589ed645cc27)
+---
+ src/crypto/crypto_aes.cc        | 12 ++++++++++--
+ src/crypto/crypto_cipher.h      | 13 +++++++++++++
+ test/cctest/test_node_crypto.cc | 19 ++++++++++++++++++-
+ 3 files changed, 41 insertions(+), 3 deletions(-)
+
+diff --git a/src/crypto/crypto_aes.cc b/src/crypto/crypto_aes.cc
+index c1c5bf762a..e47ef3ef5e 100644
+--- a/src/crypto/crypto_aes.cc
++++ b/src/crypto/crypto_aes.cc
+@@ -110,7 +110,15 @@ WebCryptoCipherStatus AES_Cipher(
+   }
+ 
+   size_t total = 0;
+-  int buf_len = in.size() + EVP_CIPHER_CTX_block_size(ctx.get()) + tag_len;
++  const int block_size = EVP_CIPHER_CTX_block_size(ctx.get());
++  if (block_size < 0) {
++    return WebCryptoCipherStatus::FAILED;
++  }
++  int buf_len;
++  if (!TryGetIntCipherOutputLength(
++          in.size(), static_cast<size_t>(block_size) + tag_len, &buf_len)) {
++    return WebCryptoCipherStatus::FAILED;
++  }
+   int out_len;
+ 
+   if (mode == EVP_CIPH_GCM_MODE &&
+@@ -146,7 +154,7 @@ WebCryptoCipherStatus AES_Cipher(
+ 
+   total += out_len;
+   CHECK_LE(out_len, buf_len);
+-  out_len = EVP_CIPHER_CTX_block_size(ctx.get());
++  out_len = block_size;
+   if (!EVP_CipherFinal_ex(
+           ctx.get(), buf.data<unsigned char>() + total, &out_len)) {
+     return WebCryptoCipherStatus::FAILED;
+diff --git a/src/crypto/crypto_cipher.h b/src/crypto/crypto_cipher.h
+index e725a2f30d..98811090ed 100644
+--- a/src/crypto/crypto_cipher.h
++++ b/src/crypto/crypto_cipher.h
+@@ -10,6 +10,7 @@
+ #include "memory_tracker.h"
+ #include "v8.h"
+ 
++#include <climits>
+ #include <string>
+ 
+ namespace node {
+@@ -134,6 +135,18 @@ enum class WebCryptoCipherStatus {
+   FAILED
+ };
+ 
++inline bool TryGetIntCipherOutputLength(size_t input_len,
++                                        size_t output_overhead,
++                                        int* output_len) {
++  static constexpr size_t kMaxLength = INT_MAX;
++  if (output_overhead > kMaxLength ||
++      input_len > kMaxLength - output_overhead) {
++    return false;
++  }
++  *output_len = static_cast<int>(input_len + output_overhead);
++  return true;
++}
++
+ // CipherJob is a base implementation class for implementations of
+ // one-shot sync and async ciphers. It has been added primarily to
+ // support the AES and RSA ciphers underlying the WebCrypt API.
+diff --git a/test/cctest/test_node_crypto.cc b/test/cctest/test_node_crypto.cc
+index 9d6405a40d..00dd6304b0 100644
+--- a/test/cctest/test_node_crypto.cc
++++ b/test/cctest/test_node_crypto.cc
+@@ -2,10 +2,13 @@
+ // and setting it to a file that does not exist.
+ #define NODE_OPENSSL_SYSTEM_CERT_PATH "/missing/ca.pem"
+ 
++#include "crypto/crypto_cipher.h"
+ #include "crypto/crypto_context.h"
++#include "gtest/gtest.h"
+ #include "node_options.h"
+ #include "openssl/err.h"
+-#include "gtest/gtest.h"
++
++#include <climits>
+ 
+ /*
+  * This test verifies that a call to NewRootCertDir with the build time
+@@ -21,3 +24,17 @@ TEST(NodeCrypto, NewRootCertStore) {
+                                       "any errors on the OpenSSL error stack\n";
+   X509_STORE_free(store);
+ }
++
++TEST(NodeCrypto, TryGetIntCipherOutputLength) {
++  int output_len = 0;
++
++  EXPECT_TRUE(
++      node::crypto::TryGetIntCipherOutputLength(INT_MAX - 16, 16, &output_len));
++  EXPECT_EQ(output_len, INT_MAX);
++
++  EXPECT_FALSE(
++      node::crypto::TryGetIntCipherOutputLength(INT_MAX - 15, 16, &output_len));
++
++  EXPECT_FALSE(node::crypto::TryGetIntCipherOutputLength(
++      0, static_cast<size_t>(INT_MAX) + 1, &output_len));
++}

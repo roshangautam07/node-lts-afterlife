@@ -1,0 +1,5 @@
+# Local nodejs/node clone used while developing backports
+/node/
+# Release tarballs are published as GitHub release assets, not committed
+/release/
+.DS_Store

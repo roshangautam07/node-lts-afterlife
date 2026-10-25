@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ren=C3=A9?= <contact.9a5d6388@renegade334.me.uk>
+Date: Fri, 26 Jun 2026 12:12:53 +0100
+Subject: [PATCH 37/60] deps: c-ares: cherry-pick 8ba37af8e3fb
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Original commit message:
+
+    Fixes #1056
+
+    The commit
+    https://github.com/c-ares/c-ares/commit/1d1b3d4a808dff9359cacb4539ac1b775876dcb6
+    refactored the function to use wide strings, but didn't touch this
+    check. Because an empty wide string would now be size 2 and not 1, the
+    empty string would go on and cause the DNS domain list to be replaced
+    with nothing.
+
+    Signed-off-by: @dankmeme01
+
+Refs: https://github.com/c-ares/c-ares/commit/8ba37af8e3fbcaad93f028cd9b36d06ff6d39543
+PR-URL: https://github.com/nodejs/node/pull/64110
+Fixes: https://github.com/nodejs/node/issues/62347
+Reviewed-By: Luigi Pinca <luigipinca@gmail.com>
+Reviewed-By: Tim Perry <pimterry@gmail.com>
+Reviewed-By: Colin Ihrig <cjihrig@gmail.com>
+Signed-off-by: Juan José Arboleda <soyjuanarbol@gmail.com>
+(cherry picked from commit 01855a19d33acfb6c00a90e6d14c0bd92d48dac8)
+---
+ deps/cares/src/lib/ares_sysconfig_win.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/deps/cares/src/lib/ares_sysconfig_win.c b/deps/cares/src/lib/ares_sysconfig_win.c
+index 35f4bd8e72..94a3817de3 100644
+--- a/deps/cares/src/lib/ares_sysconfig_win.c
++++ b/deps/cares/src/lib/ares_sysconfig_win.c
+@@ -106,7 +106,7 @@ static ares_bool_t get_REG_SZ(HKEY hKey, const WCHAR *leafKeyName, char **outptr
+ 
+   /* Get the value for real */
+   res = RegQueryValueExW(hKey, leafKeyName, 0, NULL, (BYTE *)val, &size);
+-  if (res != ERROR_SUCCESS || size == 1) {
++  if (res != ERROR_SUCCESS || size == sizeof(WCHAR)) {
+     ares_free(val);
+     return ARES_FALSE;
+   }

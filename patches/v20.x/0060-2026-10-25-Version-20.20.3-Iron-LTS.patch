@@ -1,0 +1,233 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Roshan Gautam <roshangautam07@gmail.com>
+Date: Sun, 25 Oct 2026 22:01:50 +0545
+Subject: [PATCH 60/60] 2026-10-25, Version 20.20.3 'Iron' (LTS)
+
+Unofficial security release for Node.js 20 after its upstream
+end-of-life. See doc/changelogs/CHANGELOG_V20.md.
+---
+ CHANGELOG.md                    |   3 +-
+ doc/api/deprecations.md         |   2 +-
+ doc/api/errors.md               |   2 +-
+ doc/api/http2.md                |   6 +-
+ doc/changelogs/CHANGELOG_V20.md | 115 ++++++++++++++++++++++++++++++++
+ src/node_version.h              |   2 +-
+ 6 files changed, 123 insertions(+), 7 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index efd189df86..131972f2f2 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -35,7 +35,8 @@ release.
+ </tr>
+ <tr>
+   <td valign="top">
+-<b><a href="doc/changelogs/CHANGELOG_V20.md#20.20.2">20.20.2</a></b><br/>
++<b><a href="doc/changelogs/CHANGELOG_V20.md#20.20.3">20.20.3</a></b><br/>
++<a href="doc/changelogs/CHANGELOG_V20.md#20.20.2">20.20.2</a><br/>
+ <a href="doc/changelogs/CHANGELOG_V20.md#20.20.1">20.20.1</a><br/>
+ <a href="doc/changelogs/CHANGELOG_V20.md#20.20.0">20.20.0</a><br/>
+ <a href="doc/changelogs/CHANGELOG_V20.md#20.19.6">20.19.6</a><br/>
+diff --git a/doc/api/deprecations.md b/doc/api/deprecations.md
+index b879c3e726..f9c5e957e7 100644
+--- a/doc/api/deprecations.md
++++ b/doc/api/deprecations.md
+@@ -3630,7 +3630,7 @@ an internal nodejs implementation rather than a public facing API, use `node:str
+ 
+ <!-- YAML
+ changes:
+-  - version: REPLACEME
++  - version: v20.20.3
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: End-of-Life.
+   - version: v20.19.6
+diff --git a/doc/api/errors.md b/doc/api/errors.md
+index 95fa835e7a..575f19a363 100644
+--- a/doc/api/errors.md
++++ b/doc/api/errors.md
+@@ -1734,7 +1734,7 @@ as specified through the `maxSessionInvalidFrames` option, has been exceeded.
+ ### `ERR_HTTP2_TOO_MANY_ORIGINS`
+ 
+ <!-- YAML
+-added: REPLACEME
++added: v20.20.3
+ -->
+ 
+ The number of uniq origin sent by the server has exceeded the value defined in
+diff --git a/doc/api/http2.md b/doc/api/http2.md
+index ab44b24d90..c0d2d2b5fb 100644
+--- a/doc/api/http2.md
++++ b/doc/api/http2.md
+@@ -1072,7 +1072,7 @@ The `'origin'` event is only emitted when using a secure TLS connection.
+ <!-- YAML
+ added: v8.4.0
+ changes:
+-  - version: REPLACEME
++  - version: v20.20.3
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: The `weight` option is now ignored, setting it will trigger a
+                  runtime warning.
+@@ -1465,7 +1465,7 @@ numeric stream identifier.
+ added: v8.4.0
+ deprecated: v20.19.6
+ changes:
+-  - version: REPLACEME
++  - version: v20.20.3
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: This method no longer sets the priority of the stream. Using it
+                  now triggers a runtime warning.
+@@ -1571,7 +1571,7 @@ req.setTimeout(5000, () => req.close(NGHTTP2_CANCEL));
+ <!-- YAML
+ added: v8.4.0
+ changes:
+-  - version: REPLACEME
++  - version: v20.20.3
+     pr-url: https://github.com/nodejs/node/pull/58293
+     description: The `state.weight` property is now always set to 16 and
+                  `sumDependencyWeight` is always set to 0.
+diff --git a/doc/changelogs/CHANGELOG_V20.md b/doc/changelogs/CHANGELOG_V20.md
+index 7e8a7cb72e..c41950844e 100644
+--- a/doc/changelogs/CHANGELOG_V20.md
++++ b/doc/changelogs/CHANGELOG_V20.md
+@@ -9,6 +9,7 @@
+ </tr>
+ <tr>
+ <td>
++<a href="#20.20.3">20.20.3</a><br/>
+ <a href="#20.20.2">20.20.2</a><br/>
+ <a href="#20.20.1">20.20.1</a><br/>
+ <a href="#20.20.0">20.20.0</a><br/>
+@@ -78,6 +79,120 @@
+   * [io.js](CHANGELOG_IOJS.md)
+   * [Archive](CHANGELOG_ARCHIVE.md)
+ 
++<a id="20.20.3"></a>
++
++## 2026-10-25, Version 20.20.3 'Iron' (LTS), @nodejs-eol-support
++
++This is an unofficial security release made after the upstream end-of-life
++of Node.js 20. It contains backports of the fixes from the Node.js
++security releases published since then, and security-relevant dependency
++updates. It is not built or endorsed by the Node.js project.
++
++### Notable Changes
++
++* (CVE-2026-48617) permission: handle process.chdir on writereport (RafaelGSS)
++* (CVE-2026-48618) tls: normalize hostname for server identity checks (Matteo Collina)
++* (CVE-2026-48619) http2: cap originSet size to prevent unbounded memory growth (Matteo Collina)
++* (CVE-2026-48928) tls: fix case-sensitive SNI context matching (Matteo Collina)
++* (CVE-2026-48930) dns,net: reject hostnames with embedded NUL bytes (Matteo Collina)
++* (CVE-2026-48934) tls: bind reusable sessions to authenticated host (Matteo Collina)
++* (CVE-2026-48935) permission: disable FileHandle utimes with permission model (RafaelGSS)
++* (CVE-2026-48931) http: fix response queue poisoning in http.Agent (Matteo Collina)
++* (CVE-2026-48933) crypto: guard WebCrypto cipher output length (Filip Skokan)
++* (CVE-2026-56846) http2: retain header memory in session accounting (Matteo Collina)
++* (CVE-2026-56847) permission: enforce fs write permission for trace events (RafaelGSS)
++* (CVE-2026-56848) http2: defer rst stream while in scope (Matteo Collina)
++* (CVE-2026-56850) https: distinguish PFX object-array agent keys (RafaelGSS)
++* (CVE-2026-58039) permission: check final report output path (RafaelGSS)
++* (CVE-2026-58040) https: bind identity checks to session reuse (Matteo Collina)
++* (CVE-2026-58042) dns: handle large resolveAny address replies (RafaelGSS)
++* (CVE-2026-58043) permission: avoid granting radix split nodes (RafaelGSS)
++* (CVE-2026-58044) http: reject requests exceeding max header count (Matteo Collina)
++* (CVE-2026-58045) zlib: throw on out-of-bounds write buffers (RafaelGSS)
++* (CVE-2026-105481) http: ensure agent data guard works without I/O (James M Snell)
++* (CVE-2026-105482) dns: validate resolve inputs for null bytes (James M Snell)
++* (CVE-2026-106069) tls: reject non-canonical IP addresses (Matteo Collina)
++* (CVE-2026-106074) crypto: reset random caches across snapshots (Filip Skokan)
++* (CVE-2026-111497) deps: brotli: cherry-pick 0ed4268a4401abcb44720963 (Evgenii Kliuchnikov)
++* (CVE-2026-111497) src: expose `BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH` (Antoine du Hamel)
++* (CVE-2026-106073) permission: check permission model in realpathSync (RafaelGSS)
++* deps: update llhttp to 9.4.1 (Node.js GitHub Bot)
++* deps: update llhttp to 9.4.2 (Antoine du Hamel)
++* deps: update llhttp to 9.4.3 (Paolo Insogna)
++* deps: update undici to 6.27.0 (aduh95)
++* deps: update undici to 6.28.0 (Node.js GitHub Bot)
++* deps: update undici to 6.28.1 (mcollina)
++* deps: update undici to 6.29.1 (Node.js GitHub Bot)
++* deps: update c-ares to 1.34.8 (Node.js GitHub Bot)
++* deps: update c-ares to 1.34.9 (Node.js GitHub Bot)
++* deps: update nghttp2 to 1.69.0 (Roshan Gautam)
++* (CVE-2026-48937) deps: fix integration issues with the latest nghttp2 (Tim Perry)
++* tls: reject chains containing blocked public keys (Ulises Gascon)
++* deps: upgrade openssl sources to openssl-3.0.22 (Roshan Gautam)
++* deps: update archs files for openssl-3.0.22 (Roshan Gautam)
++
++### Commits
++
++* \[`2ac2440522`] - permission: handle process.chdir on writereport (RafaelGSS)
++* \[`7854faf34e`] - tls: normalize hostname for server identity checks (Matteo Collina)
++* \[`205e258de2`] - http2: cap originSet size to prevent unbounded memory growth (Matteo Collina)
++* \[`48a3f14ad4`] - tls: fix case-sensitive SNI context matching (Matteo Collina)
++* \[`bc2d3b4055`] - dns,net: reject hostnames with embedded NUL bytes (Matteo Collina)
++* \[`da631d871b`] - tls: bind reusable sessions to authenticated host (Matteo Collina)
++* \[`db79d2cb21`] - test: add session reuse host verification regressions (Matteo Collina)
++* \[`2ca1bcc2d1`] - permission: disable FileHandle utimes with permission model (RafaelGSS)
++* \[`3560479803`] - http: fix response queue poisoning in http.Agent (Matteo Collina)
++* \[`c8e11ac292`] - crypto: guard WebCrypto cipher output length (Filip Skokan)
++* \[`31592b207b`] - http2: retain header memory in session accounting (Matteo Collina)
++* \[`e4e2c5312c`] - permission: enforce fs write permission for trace events (RafaelGSS)
++* \[`8b73b8c358`] - http2: defer rst stream while in scope (Matteo Collina)
++* \[`d59919c8c7`] - https: distinguish PFX object-array agent keys (RafaelGSS)
++* \[`67fd53f3e6`] - permission: check final report output path (RafaelGSS)
++* \[`c0297b9b50`] - https: bind identity checks to session reuse (Matteo Collina)
++* \[`5812c172eb`] - dns: handle large resolveAny address replies (RafaelGSS)
++* \[`62c7d26b14`] - permission: avoid granting radix split nodes (RafaelGSS)
++* \[`1a7ff1302a`] - http: reject requests exceeding max header count (Matteo Collina)
++* \[`8ac3840c98`] - zlib: throw on out-of-bounds write buffers (RafaelGSS)
++* \[`ddfd7106fb`] - http: avoid stream listeners on idle agent sockets (Matteo Collina)
++* \[`b5ff098149`] - http: ensure agent data guard works without I/O (James M Snell)
++* \[`57934cfdc6`] - dns: validate resolve inputs for null bytes (James M Snell)
++* \[`a512622cc4`] - tls: match IPv6 hosts against IP-Address SANs (Pascal Garber)
++* \[`6959394ca7`] - tls: reject non-canonical IP addresses (Matteo Collina)
++* \[`af675c7835`] - crypto: reset random caches across snapshots (Filip Skokan)
++* \[`dc7d6c41af`] - deps: brotli: cherry-pick 0ed4268a4401abcb44720963 (Evgenii Kliuchnikov)
++* \[`8ff5399a97`] - src: expose `BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH` (Antoine du Hamel)
++* \[`666c364368`] - permission: check permission model in realpathSync (RafaelGSS)
++* \[`3e7e87ff5b`] - deps: update llhttp to 9.4.1 (Node.js GitHub Bot)
++* \[`dc4d36b931`] - deps: update llhttp to 9.4.2 (Antoine du Hamel)
++* \[`728e6a2406`] - deps: update llhttp to 9.4.3 (Paolo Insogna)
++* \[`4e5ca228a7`] - deps: update undici to 6.27.0 (aduh95)
++* \[`94ff8ffb81`] - deps: update undici to 6.28.0 (Node.js GitHub Bot)
++* \[`8cfc395794`] - deps: update undici to 6.28.1 (mcollina)
++* \[`84db1c05a8`] - deps: update undici to 6.29.1 (Node.js GitHub Bot)
++* \[`9333f1bd05`] - deps: c-ares: cherry-pick 8ba37af8e3fb (René)
++* \[`d9b6f2625e`] - deps: update c-ares to 1.34.8 (Node.js GitHub Bot)
++* \[`a41dbafe26`] - deps: update c-ares to 1.34.9 (Node.js GitHub Bot)
++* \[`14e0c838b0`] - http2: remove support for priority signaling (Matteo Collina)
++* \[`b4a8b3c4ca`] - http2: fix DEP0194 message (KaKa)
++* \[`8bb462ecee`] - deps: update nghttp2 to 1.69.0 (Roshan Gautam)
++* \[`44b8ec885f`] - deps: fix integration issues with the latest nghttp2 (Tim Perry)
++* \[`a0c2a72630`] - http2: avoid uaf while receiving and sending rst_stream (esgor)
++* \[`27780d469d`] - tls: reject chains containing blocked public keys (Ulises Gascon)
++* \[`2876db5351`] - crypto: update root certificates to NSS 3.121 (Node.js GitHub Bot)
++* \[`af65cc5511`] - crypto: update root certificates to NSS 3.123.1 (Node.js GitHub Bot)
++* \[`2d328b1e2a`] - crypto: update root certificates to NSS 3.125 (Node.js GitHub Bot)
++* \[`d6e7eb01ee`] - crypto: update root certificates to NSS 3.129 (Node.js GitHub Bot)
++* \[`97c2fe31b8`] - crypto: update root certificates to NSS 3.131.1 (Antoine du Hamel)
++* \[`5a84b5cbbc`] - tools: sync mk-ca-bundle.pl with curl (Archkon)
++* \[`ff2e1b654b`] - zlib: fix use-after-free when reset() is called during write (Matteo Collina)
++* \[`6298c82304`] - src: clamp WriteUtf8 capacity to INT_MAX in EncodeInto (semimikoh)
++* \[`f35ba82181`] - url: handle unparsable serialized URLs in setters (Matteo Collina)
++* \[`405944242b`] - http: fix keep-alive socket reuse race in requestOnFinish (Martin Slota)
++* \[`fc8688d98e`] - http2: fix FileHandle leak in respondWithFile (sangwook)
++* \[`6dba8cb1d5`] - deps: upgrade openssl sources to openssl-3.0.22 (Roshan Gautam)
++* \[`9bcc4feea2`] - deps: update archs files for openssl-3.0.22 (Roshan Gautam)
++* \[`e3e7faf5fc`] - test: account for varied OpenSSL CCM final behaviours (Filip Skokan)
++
+ <a id="20.20.2"></a>
+ 
+ ## 2026-03-24, Version 20.20.2 'Iron' (LTS), @marco-ippolito
+diff --git a/src/node_version.h b/src/node_version.h
+index 332f4a1813..5297f4ac44 100644
+--- a/src/node_version.h
++++ b/src/node_version.h
+@@ -24,7 +24,7 @@
+ 
+ #define NODE_MAJOR_VERSION 20
+ #define NODE_MINOR_VERSION 20
+-#define NODE_PATCH_VERSION 2
++#define NODE_PATCH_VERSION 3
+ 
+ #define NODE_VERSION_IS_LTS 1
+ #define NODE_VERSION_LTS_CODENAME "Iron"
