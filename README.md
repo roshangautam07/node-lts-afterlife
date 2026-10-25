@@ -26,12 +26,61 @@ See [SECURITY-STATUS.md](SECURITY-STATUS.md) for every CVE published since
 each line's EOL. For each one it records whether it was fixed (and by which
 commit), or why it does not apply.
 
+## Releases
+
+| Version | Based on | Platforms |
+|---------|----------|-----------|
+| v20.20.3 | v20.20.2 | linux-x64, linux-arm64 (glibc ≥ 2.31), darwin-arm64 |
+| v18.20.9 | v18.20.8 | linux-x64, linux-arm64 (glibc ≥ 2.31), darwin-arm64 |
+
+Download the tarballs and `SHASUMS256.txt` from the GitHub releases page.
+To install with nvm:
+
+```sh
+shasum -a 256 -c SHASUMS256.txt --ignore-missing
+tar -xJf node-v20.20.3-linux-x64.tar.xz -C ~/.nvm/versions/node/
+mv ~/.nvm/versions/node/node-v20.20.3-linux-x64 ~/.nvm/versions/node/v20.20.3
+nvm use 20.20.3
+```
+
+The macOS builds are not notarized. If Gatekeeper blocks a downloaded copy,
+run `xattr -dr com.apple.quarantine node-v20.20.3-darwin-arm64`.
+
+## Verifying this project
+
+Everything here can be checked independently:
+
+1. **The patches apply to the official sources.** `scripts/setup.sh`
+   (or `scripts/ci-checkout.sh` for a quick shallow checkout) applies
+   `patches/` on top of the official upstream tag fetched from
+   `github.com/nodejs/node`. The result is the exact tree that was tested
+   and released.
+2. **Each patch matches its upstream fix.** `scripts/verify-provenance.sh
+   <v18|v20>` lists every commit with the upstream nodejs/node commit it
+   came from. Commits marked `IDENTICAL` are byte-for-byte the upstream
+   change. For `ADAPTED` commits, `--diff` shows exactly what differs from
+   upstream, and hand-ported commits explain why in a `Backport-Notes:`
+   trailer. `PROJECT` commits (dependency syncs, toolchain fixes, release
+   commits) document their source in the commit message.
+3. **The fixes work.** `scripts/verify.sh <v18|v20> [path/to/node]` runs
+   the regression tests that came with each fix against any binary, for
+   example a downloaded release.
+4. **The binaries were built from this repository.** Releases built by
+   the [`Build release`](.github/workflows/release.yml) workflow carry
+   signed build provenance. Check a download with
+   `gh attestation verify node-v20.20.3-linux-x64.tar.xz --repo <owner>/<repo>`.
+   The first releases (v18.20.9, v20.20.3) were built outside CI and only
+   have `SHASUMS256.txt`, but they can be rebuilt from the same patches with
+   the workflow.
+
 ## Repository layout
 
 ```
 patches/v18.x/   patch series on top of v18.20.8 (git format-patch output)
 patches/v20.x/   patch series on top of v20.20.2
-scripts/         helper scripts (setup, build, test, patch export, backporting)
+scripts/         setup, build, test, verify, release and backporting helpers
+test-results/    test suite results for the released builds
+.github/         release build workflow (with build provenance)
 SECURITY-STATUS.md
 ```
 

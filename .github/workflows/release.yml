@@ -1,0 +1,120 @@
+# Build release tarballs for one line from the public patch series, attach
+# signed build provenance (verifiable with `gh attestation verify`), and
+# optionally upload them to the GitHub release for the version tag.
+name: Build release
+
+on:
+  workflow_dispatch:
+    inputs:
+      line:
+        description: Release line
+        type: choice
+        options: [v18, v20]
+        required: true
+      publish:
+        description: Upload the tarballs to the GitHub release (replaces existing assets)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  linux:
+    name: linux-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    # Build on Ubuntu 20.04 so the binaries run on glibc 2.31 and newer.
+    container: ubuntu:20.04
+    steps:
+      - name: Install build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            gcc-10 g++-10 make python3 python3-distutils git xz-utils ca-certificates
+      - uses: actions/checkout@v4
+      - name: Apply patch series to the upstream tag
+        run: scripts/ci-checkout.sh "${{ inputs.line }}" node
+      - name: Build release tarball
+        working-directory: node
+        env:
+          CC: gcc-10
+          CXX: g++-10
+        run: |
+          python3 configure.py
+          make -j"$(nproc)" binary
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: node/node-v*-linux-${{ matrix.arch }}.tar.*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: node/node-v*-linux-${{ matrix.arch }}.tar.*
+          if-no-files-found: error
+
+  macos:
+    name: darwin-arm64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      # Node.js 18's gyp supports Python up to 3.11.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply patch series to the upstream tag
+        run: scripts/ci-checkout.sh "${{ inputs.line }}" node
+      - name: Build release tarball
+        working-directory: node
+        run: |
+          command -v xz >/dev/null || brew install xz
+          python3 configure.py
+          make -j"$(sysctl -n hw.ncpu)" binary
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: node/node-v*-darwin-arm64.tar.*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darwin-arm64
+          path: node/node-v*-darwin-arm64.tar.*
+          if-no-files-found: error
+
+  checksums:
+    needs: [linux, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Write SHASUMS256.txt
+        working-directory: dist
+        run: sha256sum node-v* > SHASUMS256.txt && cat SHASUMS256.txt
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/SHASUMS256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ inputs.line }}
+          path: dist/*
+      - name: Upload to GitHub release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(ls dist | sed -n 's/^node-\(v[0-9.]*\)-.*/\1/p' | head -1)
+          gh release view "$version" >/dev/null 2>&1 ||
+            gh release create "$version" --title "Node.js $version (unofficial EOL security release)" \
+              --notes "See SECURITY-STATUS.md and patches/${{ inputs.line }}.x."
+          gh release upload "$version" dist/* --clobber
